@@ -1,0 +1,213 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\PropertyChanged.Fody.3.1.3\build\PropertyChanged.Fody.props" Condition="Exists('..\packages\PropertyChanged.Fody.3.1.3\build\PropertyChanged.Fody.props')" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{3EED15AB-6AFC-411C-A414-7FBE5890BA5D}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>ImageProject</RootNamespace>
+    <AssemblyName>ImageProject</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="MathNet.Numerics, Version=4.8.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MathNet.Numerics.4.8.1\lib\net461\MathNet.Numerics.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="Microsoft.VisualBasic.Compatibility" />
+    <Reference Include="PropertyChanged, Version=3.1.3.0, Culture=neutral, PublicKeyToken=ee3ee20bcf148ddd, processorArchitecture=MSIL">
+      <HintPath>..\packages\PropertyChanged.Fody.3.1.3\lib\net40\PropertyChanged.dll</HintPath>
+    </Reference>
+    <Reference Include="stdole, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration.Install" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Design" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Actions.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.Designer.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PropertyGridEx\BrowsableTypeConverter.cs" />
+    <Compile Include="PropertyGridEx\CustomChoices.cs" />
+    <Compile Include="PropertyGridEx\CustomColorScheme.cs" />
+    <Compile Include="PropertyGridEx\CustomProperty.cs" />
+    <Compile Include="PropertyGridEx\CustomPropertyCollection.cs" />
+    <Compile Include="PropertyGridEx\CustomPropertyCollectionSet.cs" />
+    <Compile Include="PropertyGridEx\PropertyGridEx.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="PropertyGridEx\PropertyGridEx.Designer.cs">
+      <DependentUpon>PropertyGridEx.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PropertyGridEx\UICustomEventEditor.cs" />
+    <Compile Include="PropertyGridEx\UIFilenameEditor.cs" />
+    <Compile Include="PropertyGridEx\UIListboxEditor.cs" />
+    <Compile Include="UIModalFormEditor.cs" />
+    <Compile Include="Utils\MatrixEditControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Utils\MatrixEditControl.Designer.cs">
+      <DependentUpon>MatrixEditControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Utils\PromtForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Utils\PromtForm.Designer.cs">
+      <DependentUpon>PromtForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Utils\RecordControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Utils\RecordControl.Designer.cs">
+      <DependentUpon>RecordControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Utils\RecordProperty.cs" />
+    <Compile Include="Utils\RecordsList.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Utils\ActionList.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Utils\FormParams.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Utils\FormParams.Designer.cs">
+      <DependentUpon>FormParams.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Utils\ImageAction.cs" />
+    <Compile Include="Utils\MatrixForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Utils\MatrixForm.Designer.cs">
+      <DependentUpon>MatrixForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Utils\PanAndZoomPictureBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Utils\SizeChangeControl.cs" />
+    <Compile Include="Utils\ZoomPictureBox.cs" />
+    <EmbeddedResource Include="Form1.resx">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="Utils\FormParams.resx">
+      <DependentUpon>FormParams.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Utils\MatrixEditControl.resx">
+      <DependentUpon>MatrixEditControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Utils\MatrixForm.resx">
+      <DependentUpon>MatrixForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Utils\PromtForm.resx">
+      <DependentUpon>PromtForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Utils\RecordControl.resx">
+      <DependentUpon>RecordControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Utils\RecordsList.resx">
+      <DependentUpon>RecordsList.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <None Include="PropertyGridEx\CustomColorScheme.cs.bak" />
+    <None Include="PropertyGridEx\CustomProperty.cs.bak" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ImageLib\ImageLib.csproj">
+      <Project>{46DAB615-5578-4C28-A3C8-328D1807B326}</Project>
+      <Name>ImageLib</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="Microsoft.Vbe.Interop.Forms">
+      <Guid>{0D452EE1-E08F-101A-852E-02608C4D0BB4}</Guid>
+      <VersionMajor>2</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="PropertyGridEx\PropertyGridEx.xml" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\packages\Fody.6.0.0\build\Fody.targets" Condition="Exists('..\packages\Fody.6.0.0\build\Fody.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>Данный проект ссылается на пакеты NuGet, отсутствующие на этом компьютере. Используйте восстановление пакетов NuGet, чтобы скачать их.  Дополнительную информацию см. по адресу: http://go.microsoft.com/fwlink/?LinkID=322105. Отсутствует следующий файл: {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Fody.6.0.0\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Fody.6.0.0\build\Fody.targets'))" />
+    <Error Condition="!Exists('..\packages\PropertyChanged.Fody.3.1.3\build\PropertyChanged.Fody.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\PropertyChanged.Fody.3.1.3\build\PropertyChanged.Fody.props'))" />
+  </Target>
+</Project>

@@ -20,7 +20,6 @@ namespace ImageProject.Utils
         static Dictionary<string, ImageAction> actions = new Dictionary<string, ImageAction>();
         public ActionList() : base()
         {
-            this.AutoScroll = true;
             if (Actions == null) Actions = new ReadOnlyDictionary<string, ImageAction>(actions);
             tlp = new TableLayoutPanel();
             tlp.ColumnCount = 1;
@@ -29,6 +28,8 @@ namespace ImageProject.Utils
             tlp.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             tlp.Dock = DockStyle.Top;
             this.Controls.Add(tlp);
+            this.AutoScroll = true;
+            this.Dock = DockStyle.Fill;
         }
 
 
@@ -50,7 +51,7 @@ namespace ImageProject.Utils
                 met.Invoke(image, new object[] { t });
             }
 
-            ActionInvoked?.Invoke(action, arg);
+            ActionInvoked?.Invoke(action, arg, false);
         }
         public static void InvokeAction(FloatMatrixImage image, string actionId, string profileName)
         {
@@ -75,35 +76,90 @@ namespace ImageProject.Utils
                 actions.Add(item.ActionID, item);
                 tlp.RowCount++;
                 rs.Add(new RowStyle(SizeType.Absolute, 35));
-                Button btn = new Button() { Text = item.ActionName };
+                Button btn = new Button() { Anchor = AnchorStyles.Left|AnchorStyles.Right, Text = $"{item.ActionName} - [{item.ActionID}]" };
                 cns.Add(btn, 0, index++);
                 btn.Click += new EventHandler((o, e) =>
                 {
-                    if (item.Action != null)
-                    {
-                        SelectedImage.Action(a => item.Action.Invoke(a));
-                        ActionInvoked?.Invoke(item, new RecordArgument(null));
-                    }
-                    else
-                    {
-                        dynamic dyn = item;
-                        var prop = item.GetType().GetProperty("Action1");
-                        var act = prop.GetValue(item);
-                        var methodInfo = act.GetType().GetMethod("Invoke");
-                        //.Invoke(null, )
-                        if (FormParams.ShowParamEditor(dyn.InputType, item.ActionID, item.ActionName, out object arg, out string profName))
+                    try {
+                        if (item.Action != null)
                         {
-                            if (SelectedImage != null)
+                            SelectedImage.Action(a => item.Action.Invoke(a));
+                            ActionInvoked?.Invoke(item, new RecordArgument(null), false);
+                        }
+                        else
+                        {
+                            dynamic dyn = item;
+                            var prop = item.GetType().GetProperty("Action1");
+                            var act = prop.GetValue(item);
+                            var methodInfo = act.GetType().GetMethod("Invoke");
+                            System.Drawing.Image backup = Form1.PictureBox.Image;
+                            System.Drawing.Bitmap preview = null;
+                            try
                             {
-                                var met = SelectedImage.GetType().GetMethod("Func");
-                                var t = (Func<Matrix<float>, Matrix<float>>)(a => (Matrix<float>)methodInfo.Invoke(act, new object[] { a, arg }));
-                                met.Invoke(SelectedImage, new object[] { t });
-                                if (profName != null)
-                                    ActionInvoked?.Invoke(item, new RecordArgument(item.ActionID, profName));
-                                else
-                                    ActionInvoked?.Invoke(item, new RecordArgument(arg));
+
+                                //.Invoke(null, )
+                                Action<object> prevAct = argm =>
+                                {
+                                    try
+                                    {
+                                        var met = SelectedImage.GetType().GetMethod("Func");
+                                        var t = (Func<Matrix<float>, Matrix<float>>)(a => (Matrix<float>)methodInfo.Invoke(act, new object[] { a, argm }));
+                                        preview?.Dispose();
+                                        var prevMat = t.Invoke(SelectedImage.matrix);
+                                        preview = FloatMatrixImage.CreateBitmap(prevMat);
+                                        FloatMatrixImage.FillBitmap(preview, prevMat, SelectedImage.MinimalColorView, SelectedImage.MaximumColorView);
+                                        Form1.PictureBox.Image = preview;
+                                        Form1.PictureBox.Invalidate();
+                                    }
+                                    catch (TargetInvocationException ex)
+                                    {
+
+                                    }
+                                    catch (Exception ex)
+                                    {
+
+                                    }
+                                    //met.Invoke(SelectedImage, new object[] { t });
+                                    //ActionInvoked?.Invoke(item, new RecordArgument(arg), true);
+                                };
+
+
+                                if (FormParams.ShowParamEditor(dyn.InputType, item.ActionID, item.ActionName, out object arg, out string profName, prevAct))
+                                {
+                                    if (SelectedImage != null)
+                                    {
+                                        var met = SelectedImage.GetType().GetMethod("Func");
+                                        var t = (Func<Matrix<float>, Matrix<float>>)(a => (Matrix<float>)methodInfo.Invoke(act, new object[] { a, arg }));
+                                        met.Invoke(SelectedImage, new object[] { t });
+                                        if (profName != null)
+                                            ActionInvoked?.Invoke(item, new RecordArgument(item.ActionID, profName), false);
+                                        else
+                                            ActionInvoked?.Invoke(item, new RecordArgument(arg), false);
+                                    }
+                                }
+                            }
+                            finally
+                            {
+                                if (preview != null)
+                                {
+                                    Form1.PictureBox.Image = backup;
+                                    preview.Dispose();
+                                }
                             }
                         }
+                    }
+                    catch(TargetInvocationException ex)
+                    {
+                        Exception inner = ex;
+                        while (inner is TargetInvocationException)
+                        {
+                            inner = inner.InnerException;
+                        }
+                        MessageBox.Show(inner.Message, ex.Message);
+                    }
+                    catch(Exception ex)
+                    {
+                        MessageBox.Show(ex.Message);
                     }
                 });
             }
@@ -136,7 +192,7 @@ namespace ImageProject.Utils
             }
         }
 
-        public static event Action<ImageAction, RecordArgument> ActionInvoked;
+        public static event Action<ImageAction, RecordArgument, bool> ActionInvoked;
         public static event Action ActionUndo;
         public static event Action ActionRedo;
         public FloatMatrixImage SelectedImage { get; set; }

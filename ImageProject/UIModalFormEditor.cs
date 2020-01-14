@@ -65,6 +65,9 @@ namespace ImageProject
                         panel.Controls.Add(form);
                         form.Visible = true;
                         svc.DropDownControl(panel);
+                        if(form.DialogResult==DialogResult.OK)
+                            return editor.FormEditorType.GetProperty(editor.PropertyResult).GetValue(form);
+                        else return base.EditValue(context, provider, value);
                     }
                 }
             }

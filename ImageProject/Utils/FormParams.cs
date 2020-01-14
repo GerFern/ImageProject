@@ -55,6 +55,24 @@ namespace ImageProject.Utils
             propertyGrid1.PropertyValueChanged += PropertyGrid1_PropertyValueChanged;
         }
 
+        public event EventHandler<object> ArgPropertyChanged;
+
+        //public FormParams(PictureBox pb) : this()
+        //{
+        //    previewPb = pb;
+        //    backupPreview = pb.Image;
+        //    this.FormClosed += new FormClosedEventHandler((o, e) =>
+        //    {
+        //        previewPb.Image = backupPreview;
+        //    });
+        //    this.propertyGrid1.PropertyValueChanged += new PropertyValueChangedEventHandler((o, e) =>
+        //    {
+
+        //    });
+        //}
+
+        public bool PreviewEnabled => toolStripButton3.Checked;
+
         public static bool ShowParamEditor(object inputParam, string actionID, out object param)
         {
             using (FormParams form = new FormParams())
@@ -78,17 +96,31 @@ namespace ImageProject.Utils
             }
         }
 
-        public static bool ShowParamEditor(Type inputParamType, string actionID, string actionName, out object param, out string profileName)
+
+        public static bool ShowParamEditor(Type inputParamType, string actionID, string actionName, out object param, out string profileName, Action<object> preview = null)
         {
-            using ( FormParams form = new FormParams())
+            using (FormParams form = new FormParams
             {
-                form.Text = actionName;
-                form.ParamObject = Activator.CreateInstance(inputParamType);
-                form.ActionID = actionID;
+                Text = actionName,
+                ParamObject = Activator.CreateInstance(inputParamType),
+                ActionID = actionID
+            })
+            {
+
                 foreach (var item in GetProfiles(actionID))
                 {
                     form.AddProfileItem(item);
                 }
+
+                if (preview != null)
+                {
+                    form.ArgPropertyChanged += new EventHandler<object>((o, e) =>
+                        {
+                            if (form.PreviewEnabled)
+                                preview.Invoke(e);
+                        });
+                }
+
                 if (form.ShowDialog() == DialogResult.OK)
                 {
                     param = form.ParamObject;
@@ -103,6 +135,7 @@ namespace ImageProject.Utils
                 }
             }
         }
+
 
         private void ToolStripComboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -132,6 +165,7 @@ namespace ImageProject.Utils
             toolStripComboBox1.ForeColor = SystemColors.ControlText;
             toolStripComboBox1.SelectedIndex = -1;
             toolStripComboBox1.SelectedIndexChanged += ToolStripComboBox1_SelectedIndexChanged;
+            ArgPropertyChanged?.Invoke(this, propertyGrid1.SelectedObject);
         }
 
         private void ToolStripButton2_Click(object sender, EventArgs e)
@@ -204,7 +238,13 @@ namespace ImageProject.Utils
         {
             toolStripButton1.Click += ToolStripButton1_Click;
             toolStripButton2.Click += ToolStripButton2_Click;
+            toolStripButton3.Click += ToolStripButton3_Click;
             toolStripComboBox1.SelectedIndexChanged += ToolStripComboBox1_SelectedIndexChanged;
+        }
+
+        private void ToolStripButton3_Click(object sender, EventArgs e)
+        {
+            toolStripButton3.Checked = !toolStripButton3.Checked;
         }
 
         public static void SaveProfile(string actionID, string profileName, object obj)

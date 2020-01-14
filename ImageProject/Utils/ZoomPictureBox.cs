@@ -76,7 +76,7 @@ namespace ImageProject.Utils
             {
                 verticalScrollBar.Maximum = 0;
             }
-            verticalScrollBar.Minimum = -100;
+            verticalScrollBar.Minimum = 0;
             verticalScrollBar.LargeChange = (int)Math.Max(verticalScrollBar.Maximum / 10, 1);
             verticalScrollBar.SmallChange = (int)Math.Max(verticalScrollBar.Maximum / 20, 1);
         }

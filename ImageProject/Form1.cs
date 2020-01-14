@@ -19,11 +19,14 @@ namespace ImageProject
         [ExtenderProvidedProperty]
         [RefreshProperties(RefreshProperties.All)]
         public MProperty MProperty { get; set; }
+        [Browsable(false)]
+        public static PictureBox PictureBox { get; private set; }
         public Form1()
         {
             InitializeComponent();
+            Actions.Init(typeof(Methods.SArg));
             InitActions(Actions.ActionDict.Values);
-            recordsList1.InitRecords();
+            //recordsList1.InitRecords();
             //InitActions(Actions.ActionItems);
             MProperty mProperty = new MProperty();
             mProperty.Form = this;
@@ -32,6 +35,8 @@ namespace ImageProject
             MProperty = mProperty;
             mProperty.PropertyChanged += MProperty_PropertyChanged;
             //mProperty.PropertyChanged += new 
+
+            PictureBox = this.zoomPictureBox1;
         }
 
         private void MProperty_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -60,6 +65,7 @@ namespace ImageProject
 
         public void InitActions(IEnumerable<ImageAction> items)
         {
+
             actionList1.SetImageActions(items.ToDictionary(a => a.ActionID, b => b));
         }
 
@@ -74,10 +80,19 @@ namespace ImageProject
             if (t.ShowDialog() == DialogResult.OK)
             {
                 var img = new FloatMatrixImage((Bitmap)Bitmap.FromFile(t.FileName));
+                StaticInfo.FloatMatrixImage = img;
                 zoomPictureBox1.Image = img.GetBitmap();
                 actionList1.SelectedImage = img;
                 recordsList1.SelectedImage = img;
-                img.BitmapUpdated += new EventHandler((o, _) => { zoomPictureBox1.Invalidate(); });
+                img.BitmapUpdated += new EventHandler<FloatMatrixImage.EventArgsBitmapUpdated>((o, be) =>
+                {
+                    if (be.CreateNew)
+                    {
+                        zoomPictureBox1.Image = img.GetBitmap();
+                    }
+                    else
+                        zoomPictureBox1.Invalidate();
+                });
                 MProperty.MatrixImage = img;
             }
         }
@@ -112,6 +127,80 @@ namespace ImageProject
         {
 
         }
+
+        private void ФункцияToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+        }
+
+        private void Form1_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            try
+            {
+                switch (e.KeyChar)
+                {
+                    case '+':
+                        zoomPictureBox1.UpZoom();
+                        break;
+                    case '-':
+                        zoomPictureBox1.LowZoom();
+                        break;
+                    case 'w':
+                        zoomPictureBox1.VerticalScrollBar.Value--;
+                        zoomPictureBox1.Invalidate();
+                        break;
+                    case 's':
+                        zoomPictureBox1.VerticalScrollBar.Value++;
+                        zoomPictureBox1.Invalidate();
+                        break;
+                    case 'a':
+                        zoomPictureBox1.HorizontalScrollBar.Value--;
+                        zoomPictureBox1.Invalidate();
+                        break;
+                    case 'd':
+                        zoomPictureBox1.HorizontalScrollBar.Value++;
+                        zoomPictureBox1.Invalidate();
+                        break;
+                }
+            }
+            catch
+            {
+
+            }
+        }
+
+        private void ZoomPictureBox1_MouseMove(object sender, MouseEventArgs e)
+        {
+            ZoomPictureBox zpb = (ZoomPictureBox)sender;
+            var offsetX = zpb.OffsetX;
+            var offsetY = zpb.OffsetY;
+            var zoomScale = zpb.ZoomScale;
+            Point point = new Point((int)(e.X / zoomScale) + offsetX, (int)(e.Y / zoomScale) + offsetY);
+            label1.Text = point.ToString();
+            var fmimg = StaticInfo.FloatMatrixImage;
+            try
+            {
+                if (fmimg != null)
+                {
+                    var mat = fmimg.matrix;
+                    if (point.X < mat.ColumnCount && point.Y < mat.RowCount)
+                    {
+
+                        var pixel = mat[point.Y, point.X];
+                        var str = pixel.ToString();
+                        if (fmimg.MaximumColorView < pixel)
+                            str += $" ({fmimg.MaximumColorView})";
+                        else if (fmimg.MinimalColorView > pixel)
+                            str += $" ({fmimg.MinimalColorView})";
+                        label2.Text = str;
+                    }
+                    else label2.Text = "___";
+                }
+            }
+            catch(Exception ex)
+            {
+                label2.Text = ex.Message;
+            }
+        }
     }
 
     public class FormT : Form
@@ -131,7 +220,12 @@ namespace ImageProject
         public InterpolationMode InterpolationMode 
         {
             get => ZoomPictureBox.InterpolationMode;
-            set => ZoomPictureBox.InterpolationMode = value;
+            set
+            {
+                if (value != InterpolationMode.Invalid)
+                    ZoomPictureBox.InterpolationMode = value;
+                else ZoomPictureBox.InterpolationMode = InterpolationMode.Default;
+            }
         }
         [TypeConverter(typeof(ExpandableObjectConverter))]
         public FloatMatrixImage MatrixImage { get; set; }

@@ -1,4 +1,7 @@
-﻿using ImageLib;
+﻿//#define TypeConverter
+
+
+using ImageLib;
 using ImageProject.Utils;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Storage;
@@ -13,6 +16,10 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ImageProject.Utils;
+using System.Runtime.Serialization;
+using System.Text.RegularExpressions;
+using ImageProject.Converters;
+using static ImageProject.Actions;
 
 namespace ImageProject
 {
@@ -243,11 +250,31 @@ namespace ImageProject
         }
     }
 
-
-   
-
     [Serializable]
-    public class WaivletInput
+    public class BaseArgument
+    {
+        public override string ToString()
+        {
+            //System.Diagnostics.Debugger.Break();
+            var ps = TypeDescriptor.GetProperties(this);
+            StringBuilder sb = new StringBuilder();
+            PropertyDescriptor p;
+            for (int i = 0; i < ps.Count-1; i++)
+            {
+                p = ps[i];
+                sb.Append($"{p.DisplayName}:{p.GetValue(this)} ,");
+            }
+            p = ps[ps.Count-1];
+            sb.Append($"{p.DisplayName}:{p.GetValue(this)}");
+            return $"{{{sb.ToString()}}}";
+        }
+    }
+   
+    [Serializable]
+#if TypeConverter
+    [TypeConverter(typeof(ArgTypeConverter))]
+#endif
+    public class WavletInput : BaseArgument
     {
         [Description("LeftUp")]
         public float M0 { get; set; }
@@ -257,17 +284,33 @@ namespace ImageProject
         public float M2 { get; set; }
         [Description("RightDown")]
         public float M3 { get; set; }
-        [Editor(typeof(UIMyEditor), typeof(UITypeEditor))]
-        [EditorStyle(UITypeEditorEditStyle.DropDown)]
-        [EditorForm(typeof(MatrixForm), nameof(MatrixForm.Array), nameof(MatrixForm.Array))]
-        public float[,] Arr { get; set; } = (float[,])Array.CreateInstance(typeof(float), 3, 3);
-        [Editor(typeof(UIMyEditor), typeof(UITypeEditor))]
-        [EditorStyle(UITypeEditorEditStyle.Modal)]
-        [EditorForm(typeof(Form1), "", "")]
-        public string T { get; set; }
-    }
 
-    public class MatrixInput
+        public WavletInput()
+        {
+
+        }
+
+        public WavletInput(float M0, float M1, float M2, float M3)
+        {
+            this.M0 = M0;
+            this.M1 = M1;
+            this.M2 = M2;
+            this.M3 = M3;
+        }
+        //[Editor(typeof(UIMyEditor), typeof(UITypeEditor))]
+        //[EditorStyle(UITypeEditorEditStyle.DropDown)]
+        //[EditorForm(typeof(MatrixForm), nameof(MatrixForm.Array), nameof(MatrixForm.Array))]
+        //public float[,] Arr { get; set; } = (float[,])Array.CreateInstance(typeof(float), 3, 3);
+        //[Editor(typeof(UIMyEditor), typeof(UITypeEditor))]
+        //[EditorStyle(UITypeEditorEditStyle.Modal)]
+        //[EditorForm(typeof(Form1), "", "")]
+        //public string T { get; set; }
+    }
+    [Serializable]
+#if TypeConverter
+    [TypeConverter(typeof(ArgTypeConverter))]
+#endif
+    public class MatrixInput : BaseArgument
     {
         Size size = new Size(3, 3);
         [DisplayName("Размер матрицы")]
@@ -290,7 +333,10 @@ namespace ImageProject
 
 
     [Serializable]
-    public class TwoMatrixInput
+    #if TypeConverter
+    [TypeConverter(typeof(ArgTypeConverter))]
+    #endif
+    public class TwoMatrixInput : BaseArgument
     {
         Size size1 = new Size(3, 3);
         Size size2 = new Size(3, 3);
@@ -336,173 +382,638 @@ namespace ImageProject
         public T Value { get; set; }
     }
 
-    public class ContrastArg
+    [Serializable]
+    public class Int32Value : BaseArgument
     {
-        public float C { get; set; }
-        public float K { get; set; }
+        [DisplayName("Значение")]
+        public int Value { get; set; }
     }
 
-    public static class Methods
+    [Serializable]
+    public class SingleValue : BaseArgument
     {
-        public static Matrix<float> Waivlet(Matrix<float> matrix, WaivletInput arg)
+        [DisplayName("Значение")]
+        public float Value { get; set; }
+    }
+
+    [Serializable]
+#if TypeConverter
+    [TypeConverter(typeof(ArgTypeConverter))]
+#endif
+    public class ContrastArg : BaseArgument
+    {
+        [DisplayName("Сдвиг")]
+        public float C { get; set; }
+        [DisplayName("Множитель")]
+        public float K { get; set; }
+    }
+    [Serializable]
+#if TypeConverter
+    [TypeConverter(typeof(ArgTypeConverter))]
+#endif
+    public class CutArg : BaseArgument
+    {
+        public float Min { get; set; }
+        public float Max { get; set; }
+    }
+
+    public class SetArg : BaseArgument
+    {
+        public float Min { get; set; }
+        public float Max { get; set; }
+        public float Set { get; set; }
+    }
+
+    [Serializable]
+    public enum Direction
+    {
+        Horizontal,
+        Vertical
+    }
+
+    [Serializable]
+    public class GraphWArg : BaseArgument
+    {
+        [DisplayName("Ориентация")]
+        public Direction Direction { get; set; }
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int XCount { get; set; }
+        public int YCount { get; set; }
+    }
+
+    [Serializable]
+#if TypeConverter
+    [TypeConverter(typeof(ArgTypeConverter))]
+#endif
+    public class StorageViewer : BaseArgument
+    {
+        [DisplayName("Ключ хранилища")]
+        [Editor(typeof(UIMyEditor), typeof(UITypeEditor))]
+        [EditorStyle(UITypeEditorEditStyle.DropDown)]
+        [EditorForm(typeof(KeyStorageSelectForm), nameof(KeyStorageSelectForm.Selected), nameof(KeyStorageSelectForm.Selected))]
+        public string StorageKey { get; set; }
+        [IgnoreDataMember]
+        [DisplayName("Хранилище")]
+        public Storage Storage => StaticInfo.Storage;
+
+    }
+
+    [Serializable]
+#if TypeConverter
+    [TypeConverter(typeof(ArgTypeConverter))]
+#endif
+    public class MedianeIndexed : BaseArgument
+    {
+        [DisplayName("Количество повторов")]
+        public int K { get; set; }
+        [DisplayName("Индекс после сортировки")]
+        [Description("От 0 до 8...\r\n0-Эрозия\r\n4-Медианная фильтрация\r\n8-Дилатация")]
+        public int Index
         {
-            float d0, d1, d2, d3;
-            float m0, m1, m2, m3;
-            //m0 = m1 = m2 = m3 = 1;
-            m0 = arg.M0;
-            m1 = arg.M1;
-            m2 = arg.M2;
-            m3 = arg.M3;
-
-            int height = matrix.RowCount;
-            int width = matrix.ColumnCount;
-            float[,] dataSrc = matrix.ToArray();
-            float[,] dataDst = new float[height, width];
-            int kHeight = height >> 1;
-            int kWidth = width >> 1;
-            for (int y = 0; y < kHeight; y++)
+            get => index;
+            set
             {
-                for (int x = 0; x < kWidth; x++)
+                if (value < 0) index = 0;
+                else if (value > 8) index = 8;
+                else index = value;
+            }
+        }
+        int index;
+    }
+
+#if TypeConverter
+    [TypeConverter(typeof(ArgTypeConverter))]
+#endif
+    public class MathMatrixArg : BaseArgument
+    {
+        public enum MathEnum
+        {
+            Add,
+            Sub,
+            Mul,
+            Div,
+            CurImg,
+            StrgImg,
+        }
+        public string Argument { get; set; }
+
+        void Parse()
+        {
+            Stack<Obj> output = new Stack<Obj>();
+            Stack<Obj> stack = new Stack<Obj>();
+            foreach (var item in Check(Argument))
+            {
+                switch (item.symbol)
                 {
-                    d0 = (dataSrc[2 * y, 2 * x] + dataSrc[2 * y, 2 * x + 1] + dataSrc[2 * y + 1, 2 * x] + dataSrc[2 * y + 1, 2 * x + 1]) * m0;
-                    d1 = (dataSrc[2 * y, 2 * x] + dataSrc[2 * y, 2 * x + 1] - dataSrc[2 * y + 1, 2 * x] - dataSrc[2 * y + 1, 2 * x + 1]) * m1;
-                    d2 = (dataSrc[2 * y, 2 * x] - dataSrc[2 * y, 2 * x + 1] + dataSrc[2 * y + 1, 2 * x] - dataSrc[2 * y + 1, 2 * x + 1]) * m2;
-                    d3 = (dataSrc[2 * y, 2 * x] - dataSrc[2 * y, 2 * x + 1] - dataSrc[2 * y + 1, 2 * x] + dataSrc[2 * y + 1, 2 * x + 1]) * m3;
-
-                    //if (setZero)
-                    //{
-                    //    if (a < 0) a = 0;
-                    //    if (d1 < 0) d1 = 0;
-                    //    if (d2 < 0) d2 = 0;
-                    //    if (d3 < 0) d3 = 0;
-                    //}
-
-
-                    //if (a < min) min = a;
-                    //if (d1 < min) min = d1;
-                    //if (d2 < min) min = d2;
-                    //if (d3 < min) min = d3;
-
-                    //if (a > max) max = a;
-                    //if (d1 > max) max = d1;
-                    //if (d2 > max) max = d2;
-                    //if (d3 > max) max = d3;
-
-
-                    dataDst[y, x] = d0;
-                    dataDst[y, x + kWidth] = d1;
-                    dataDst[y + kHeight, x] = d2;
-                    dataDst[y + kHeight, x + kWidth] = d3;
-                    //dataDst[y, x] = 0;
+                    case Obj.TypeSymbol.dec:
+                        output.Push(item);
+                        break;
+                    case Obj.TypeSymbol.post:
+                        output.Push(item);
+                        break;
+                    case Obj.TypeSymbol.pre:
+                        stack.Push(item);
+                        break;
+                    case Obj.TypeSymbol.open:
+                        stack.Push(item);
+                        break;
+                    case Obj.TypeSymbol.close:
+                        while (true)
+                        {
+                            Obj obj = stack.Pop();
+                            if (obj.symbol == Obj.TypeSymbol.open) break;
+                            output.Push(obj);
+                        }
+                        break;
+                    case Obj.TypeSymbol.bin:
+                        while(true)
+                        {
+                            Obj obj = stack.Peek();
+                            if (obj.symbol != Obj.TypeSymbol.pre) break;
+                            output.Push(stack.Pop());
+                        }
+                        output.Push(item);
+                        break;
+                    case Obj.TypeSymbol.invalid:
+                        break;
                 }
             }
-            return ImageLib.FloatMatrixImage.CreateMatrixFloat(dataDst);
+        }
+
+        Obj[] Check(string input)
+        {
+            return regex.Split(input).Select(a => new Obj(a)).ToArray();
         }
         
-        public static Matrix<float> InvWaivlet(Matrix<float> matrix, WaivletInput arg)
+        Regex regex = new Regex("\\w+|\\(|\\)|[+\\-*\\/]", RegexOptions.IgnoreCase);
+
+        class Obj
         {
-            float d0, d1, d2, d3;
-            float m0, m1, m2, m3;
-            //m0 = m1 = m2 = m3 = 1;
-            m0 = (float)arg.M0;
-            m1 = (float)arg.M1;
-            m2 = (float)arg.M2;
-            m3 = (float)arg.M3;
-
-
-
-            int height = matrix.RowCount;
-            int width = matrix.ColumnCount;
-            float[,] dataSrc = matrix.ToArray();
-            float[,] dataDst = new float[height, width];
-            int kHeight = height >> 1;
-            int kWidth = width >> 1;
-            for (int y = 0; y < kHeight; y++)
+            public enum TypeSymbol
             {
-                for (int x = 0; x < kWidth; x++)
+                dec,
+                post,
+                pre,
+                open,
+                close,
+                bin,
+                invalid
+            }
+            public TypeSymbol symbol;
+            public string input;
+            public object value;
+            public Obj(string input)
+            {
+                this.input = input;
+                if(float.TryParse(input, out float result))
                 {
-                    d0 = dataSrc[y, x];
-                    d1 = dataSrc[y, x + kWidth];
-                    d2 = dataSrc[y + kHeight, x];
-                    d3 = dataSrc[y + kHeight, x + kWidth];
-
-                    dataDst[y * 2, x * 2] = m0 * (d0 + d1 + d2 + d3);
-                    dataDst[y * 2, x * 2 + 1] = m1 * (d0 + d1 - d2 - d3);
-                    dataDst[y * 2 + 1, x * 2] = m2 * (d0 - d1 + d2 - d3);
-                    dataDst[y * 2 + 1, x * 2 + 1] = m3 * (d0 - d1 - d2 + d3);
+                    symbol = TypeSymbol.dec;
+                    value = result;
+                }
+                else if (post.Contains(input))
+                {
+                    symbol = TypeSymbol.post;
+                    value = input;
+                }
+                else if (pre.Contains(input))
+                {
+                    symbol = TypeSymbol.pre;
+                    value = input;
+                }
+                else if (input == "(")
+                {
+                    symbol = TypeSymbol.open;
+                }
+                else if (input == ")")
+                {
+                    symbol = TypeSymbol.close;
+                }
+                else if (bin.Contains(input))
+                {
+                    symbol = TypeSymbol.bin;
+                    value = input;
+                }
+                else
+                {
+                    symbol = TypeSymbol.invalid;
                 }
             }
-            return ImageLib.FloatMatrixImage.CreateMatrixFloat(dataDst);
-        }
 
-        public static Matrix<float> MethodSdvig(Matrix<float> matrix, MatrixInput arg)
-        {
-            return FloatMatrixImage.GetMatrix(matrix, arg.Vs);
-        }
-
-        public static Matrix<float> MethodDSdvid(Matrix<float> matrix, TwoMatrixInput arg)
-        {
-            return FloatMatrixImage.Cont(matrix, arg.Vs1, arg.Vs2);
-        }
-
-        public static Matrix<float> Erode(Matrix<float> matrix, SimpleValue<int> value)
-        {
-            int d = value.Value;
-            int v = d * 2 + 1;
-            var src = matrix.ToArray();
-            for (int i = d; i < matrix.RowCount - v; i++)
+            string[] post = new string[]
             {
-                for (int j = d; j < matrix.ColumnCount - v; j++)
+            };
+
+            string[] pre = new string[]
+            {
+                "load",
+                "loadMat",
+                "curMat",
+                "invoke"
+            };
+
+            string[] bin = new string[]
+            {
+                "+",
+                "-",
+                "*",
+                "/"
+            };
+        }
+
+        //public IEnumerable<(MathEnum en, object arg)> Parse()
+        //{
+        //    regex.
+        //}
+    }
+    public static class Methods
+    {
+        // TODO: Определение методов
+        public static class Other
+        {
+            //public static (Vector<float>,Vector<float>) Haar(Vector<float> vs)
+            //{
+            //    Vector<float> vs1 = ;
+            //    Vector<float> vs2;
+
+            //}
+        }
+        // TODO: Определение методов
+        public static class SArg
+        {
+            //[M("SVD")]
+            //public static Matrix<float> SVD(Matrix<float> matrix)
+            //{
+            //    matrix.
+            //    var svd = matrix.Svd();
+            //    svd.Solve(matrix);
+            //    return svd.W;
+            //}
+
+
+
+            [M("Вейвлет")]
+            public static Matrix<float> Wavlet(Matrix<float> matrix, WavletInput arg)
+            {
+                float d0, d1, d2, d3;
+                float m0, m1, m2, m3;
+                //m0 = m1 = m2 = m3 = 1;
+                m0 = arg.M0;
+                m1 = arg.M1;
+                m2 = arg.M2;
+                m3 = arg.M3;
+                arg.ToString();
+
+                int height = matrix.RowCount;
+                int width = matrix.ColumnCount;
+                float[,] dataSrc = matrix.ToArray();
+                float[,] dataDst = new float[height, width];
+                int kHeight = height >> 1;
+                int kWidth = width >> 1;
+                for (int y = 0; y < kHeight; y++)
                 {
-                    var m = matrix.SubMatrix(i, v, j, v);
-                    src[i, j] = m.Enumerate().Min();
+                    for (int x = 0; x < kWidth; x++)
+                    {
+                        d0 = (dataSrc[2 * y, 2 * x] + dataSrc[2 * y, 2 * x + 1] + dataSrc[2 * y + 1, 2 * x] + dataSrc[2 * y + 1, 2 * x + 1]) * m0;
+                        d1 = (dataSrc[2 * y, 2 * x] + dataSrc[2 * y, 2 * x + 1] - dataSrc[2 * y + 1, 2 * x] - dataSrc[2 * y + 1, 2 * x + 1]) * m1; //v
+                        d2 = (dataSrc[2 * y, 2 * x] - dataSrc[2 * y, 2 * x + 1] + dataSrc[2 * y + 1, 2 * x] - dataSrc[2 * y + 1, 2 * x + 1]) * m2; //h
+                        d3 = (dataSrc[2 * y, 2 * x] - dataSrc[2 * y, 2 * x + 1] - dataSrc[2 * y + 1, 2 * x] + dataSrc[2 * y + 1, 2 * x + 1]) * m3; //d
+
+                        //if (setZero)
+                        //{
+                        //    if (a < 0) a = 0;
+                        //    if (d1 < 0) d1 = 0;
+                        //    if (d2 < 0) d2 = 0;
+                        //    if (d3 < 0) d3 = 0;
+                        //}
+
+
+                        //if (a < min) min = a;
+                        //if (d1 < min) min = d1;
+                        //if (d2 < min) min = d2;
+                        //if (d3 < min) min = d3;
+
+                        //if (a > max) max = a;
+                        //if (d1 > max) max = d1;
+                        //if (d2 > max) max = d2;
+                        //if (d3 > max) max = d3;
+
+
+                        dataDst[y, x] = d0/4;
+                        dataDst[y, x + kWidth] = d1/4;
+                        dataDst[y + kHeight, x] = d2/4;
+                        dataDst[y + kHeight, x + kWidth] = d3/4;
+                        //dataDst[y, x] = 0;
+                    }
+                }
+                return ImageLib.FloatMatrixImage.CreateMatrixFloat(dataDst);
+            }
+
+            [M("Обратный вейвлет")]
+
+            public static Matrix<float> InvWavlet(Matrix<float> matrix, WavletInput arg)
+            {
+                float d0, d1, d2, d3;
+                float m0, m1, m2, m3;
+                //m0 = m1 = m2 = m3 = 1;
+                m0 = (float)arg.M0;
+                m1 = (float)arg.M1;
+                m2 = (float)arg.M2;
+                m3 = (float)arg.M3;
+
+
+
+                int height = matrix.RowCount;
+                int width = matrix.ColumnCount;
+                float[,] dataSrc = matrix.ToArray();
+                float[,] dataDst = new float[height, width];
+                int kHeight = height >> 1;
+                int kWidth = width >> 1;
+                for (int y = 0; y < kHeight; y++)
+                {
+                    for (int x = 0; x < kWidth; x++)
+                    {
+                        d0 = dataSrc[y, x];
+                        d1 = dataSrc[y, x + kWidth];
+                        d2 = dataSrc[y + kHeight, x];
+                        d3 = dataSrc[y + kHeight, x + kWidth];
+
+                        dataDst[y * 2, x * 2] = m0 * (d0 + d1 + d2 + d3);
+                        dataDst[y * 2, x * 2 + 1] = m1 * (d0 + d1 - d2 - d3);
+                        dataDst[y * 2 + 1, x * 2] = m2 * (d0 - d1 + d2 - d3);
+                        dataDst[y * 2 + 1, x * 2 + 1] = m3 * (d0 - d1 - d2 + d3);
+                    }
+                }
+                return ImageLib.FloatMatrixImage.CreateMatrixFloat(dataDst);
+            }
+
+            //[M("Границы")]
+            public static Matrix<float> MethodSdvig(Matrix<float> matrix, MatrixInput arg)
+            {
+                return FloatMatrixImage.GetMatrix(matrix, arg.Vs);
+            }
+            [M("Границы")]
+            public static Matrix<float> Border(Matrix<float> matrix, TwoMatrixInput arg)
+            {
+                return FloatMatrixImage.Cont(matrix, arg.Vs1, arg.Vs2);
+            }
+
+            public static IEnumerable<float> SubMatrixEnum(float[,] matrix, int x, int y, int v)
+            {
+                int xv = x + v, yv = y + v;
+                for (int i = x; i < xv; i++)
+                {
+                    for (int j = y; j < yv; j++)
+                    {
+                        yield return matrix[i, j];
+                    }
                 }
             }
-            return FloatMatrixImage.CreateMatrixFloat(src);
-        }
-
-        public static Matrix<float> Dilate(Matrix<float> matrix, SimpleValue<int> value)
-        {
-            int d = value.Value;
-            int v = d * 2 + 1;
-            var src = matrix.ToArray();
-            for (int i = d; i < matrix.RowCount - v; i++)
+            [M("Эрозия")]
+            public static Matrix<float> Erode(Matrix<float> matrix, Int32Value value)
             {
-                for (int j = d; j < matrix.ColumnCount - v; j++)
+                int d = value.Value;
+                int v = d * 2 + 1;
+                var src = matrix.ToArray();
+                for (int i = d; i < matrix.RowCount - v; i++)
                 {
-                    var m = matrix.SubMatrix(i, v, j, v);
-                    src[i, j] = m.Enumerate().Max();
+                    for (int j = d; j < matrix.ColumnCount - v; j++)
+                    {
+                        var m = matrix.SubMatrix(i, v, j, v);
+                        src[i, j] = m.Enumerate().Min();
+                    }
+                }
+                return FloatMatrixImage.CreateMatrixFloat(src);
+            }
+            [M("Дилатация")]
+            public static Matrix<float> Dilate(Matrix<float> matrix, Int32Value value)
+            {
+                int d = value.Value;
+                int v = d * 2 + 1;
+                var src = matrix.ToArray();
+                for (int i = d; i < matrix.RowCount - v; i++)
+                {
+                    for (int j = d; j < matrix.ColumnCount - v; j++)
+                    {
+                        var m = matrix.SubMatrix(i, v, j, v);
+                        src[i, j] = m.Enumerate().Max();
+                    }
+                }
+                return FloatMatrixImage.CreateMatrixFloat(src);
+            }
+            [M("Медианная ф.")]
+            public static Matrix<float> Mediane(Matrix<float> matrix, MedianeIndexed arg)
+            {
+                int d = arg.K;
+                int index = arg.Index;
+                int v = d * 2 + 1;
+                var src = matrix.ToArray();
+                float[,] dst = null;
+                dst = (float[,])src.Clone();
+                int w = matrix.RowCount;
+                int h = matrix.ColumnCount;
+                for (int k = 0; k < d; k++)
+                {
+                    for (int i = 1; i < w - 1; i++)
+                    {
+                        for (int j = 1; j < h - 1; j++)
+                        {
+                            var t = SubMatrixEnum(src, i - 1, j - 1, 3).OrderBy(a => a).ToArray();
+                            dst[i, j] = t[index];
+                        }
+                    }
+                    src = (float[,])dst.Clone();
+                    var tmp = src;
+                    src = dst;
+                    dst = tmp;
+                }
+                return FloatMatrixImage.CreateMatrixFloat(dst);
+            }
+            [M("Яркость")]
+            public static Matrix<float> Brightnest(Matrix<float> matrix, SingleValue value)
+            {
+                var c = value.Value;
+                return matrix + c;
+            }
+            [M("Контрастность")]
+            public static Matrix<float> Contrast(Matrix<float> matrix, ContrastArg arg)
+            {
+                var c = arg.C;
+                var k = arg.K;
+                return FloatMatrixImage.ForeachPixels(matrix, a => a * k + c);
+            }
+            [M("Вырезать ярк.")]
+            public static Matrix<float> Cut(Matrix<float> matrix, CutArg arg)
+            {
+                var min = arg.Min;
+                var max = arg.Max;
+                return FloatMatrixImage.ForeachPixels(matrix, a => Math.Max(Math.Min(a, max), min));
+            }
+            [M("Пределы уст. ярк.")]
+            public static Matrix<float> Set(Matrix<float> matrix, SetArg arg)
+            {
+                var min = arg.Min;
+                var max = arg.Max;
+                var set = arg.Set;
+                return FloatMatrixImage.ForeachPixels(matrix, a => 
+                {
+                    if (a < min) return set;
+                    else if (a > max) return set;
+                    else return a;
+                });
+            }
+            [M("График")]
+            public static Matrix<float> CreateGraph(Matrix<float> matrix, GraphWArg arg)
+            {
+                int xd = matrix.ColumnCount / arg.XCount;
+                int yd = matrix.RowCount / arg.YCount;
+                Matrix<float> sub = matrix.SubMatrix(arg.X * xd, xd, arg.Y * yd, yd);
+                ZedGraph.ZedGraphControl control = new ZedGraph.ZedGraphControl();
+                int min = (int)sub.Enumerate().Min();
+                int max = (int)sub.Enumerate().Max();
+                ZedGraph.GraphPane pane = new ZedGraph.GraphPane();
+                pane.LineType = ZedGraph.LineType.Stack;
+                ZedGraph.PointPairList[] pps = null;
+                if (arg.Direction == Direction.Horizontal)
+                {
+                    pps = new ZedGraph.PointPairList[sub.RowCount];
+                    int rc = 0;
+                    foreach (var item in sub.EnumerateRowsIndexed())
+                    {
+                        item.Deconstruct(out int index, out Vector<float> row);
+                        ZedGraph.PointPairList pointPairs = new ZedGraph.PointPairList();
+                        pps[rc++] = pointPairs;
+                        var vs = Array.CreateInstance(typeof(int), new int[] { max - min + 1 }, new int[] { min });
+                        int counter = 0;
+                        foreach (var item2 in row)
+                        {
+                            pointPairs.Add(counter++, (int)item2);
+                            //int t = (int)item2;
+                            //vs.SetValue((int)vs.GetValue(t) + 1, t);
+                        }
+                        pane.AddBar(index.ToString(), pointPairs, Color.Black);
+                    }
+                }
+                else
+                {
+                    pps = new ZedGraph.PointPairList[sub.ColumnCount];
+                    int rc = 0;
+                    foreach (var item in sub.EnumerateColumnsIndexed())
+                    {
+                        item.Deconstruct(out int index, out Vector<float> row);
+                        ZedGraph.PointPairList pointPairs = new ZedGraph.PointPairList();
+                        pps[rc++] = pointPairs;
+                        var vs = Array.CreateInstance(typeof(int), new int[] { max - min + 1 }, new int[] { min });
+                        int counter = 0;
+                        foreach (var item2 in row)
+                        {
+                            pointPairs.Add(counter++, (int)item2);
+                            //int t = (int)item2;
+                            //vs.SetValue((int)vs.GetValue(t) + 1, t);
+                        }
+                        pane.AddBar(index.ToString(), pointPairs, Color.Black);
+                    }
+                }
+                NumericUpDown numericUpDown = new NumericUpDown();
+                numericUpDown.Minimum = 0;
+                numericUpDown.Maximum = pps.Length - 1;
+                numericUpDown.Dock = DockStyle.Top;
+                control.GraphPane = pane;
+                pane.AddCurve("", pps[0], Color.Black);
+                control.Dock = DockStyle.Fill;
+                control.AxisChange();
+                control.Invalidate();
+                var f = new Form();
+                f.Controls.Add(control);
+                f.Controls.Add(numericUpDown);
+                numericUpDown.ValueChanged += new EventHandler((o, e) =>
+                {
+                    var index = (int)numericUpDown.Value;
+                    control.GraphPane = new ZedGraph.GraphPane();
+                    control.GraphPane.AddCurve("", pps[index], Color.Black);
+                    control.AxisChange();
+                    control.Invalidate();
+                });
+                f.Show();
+                return matrix;
+            }
+            [M("Сохранить")]
+            public static Matrix<float> Save(Matrix<float> matrix, StorageViewer arg)
+            {
+                arg.Storage.SetImage(arg.StorageKey, matrix);
+                return matrix;
+            }
+            [M("Загрузить")]
+            public static Matrix<float> Load(Matrix<float> matrix, StorageViewer arg)
+            {
+                return arg.Storage.GetImage(arg.StorageKey);
+            }
+            [M("Функция")]
+            public static Matrix<float> MathFunc(Matrix<float> matrix, MathArg arg)
+            {
+                arg._this = matrix;
+                object value = arg.Process(arg.Sort(arg.Parse(arg.Argument)));
+                if (value == null) throw new Exception("NULL");
+                if (value is Matrix<float> mat) return mat;
+                else
+                {
+                    throw new Exception($"Выражение было типа {value.GetType()} - {value}");
                 }
             }
-            return FloatMatrixImage.CreateMatrixFloat(src);
+            // TODO: Конец определения методов
         }
+    }
 
-        public static Matrix<float> Brightnest(Matrix<float> matrix, SimpleValue<float> value)
+    public class MAttribute : Attribute
+    {
+        public string Name { get; }
+        public MAttribute(string name)
         {
-            var c = value.Value;
-            return FloatMatrixImage.ForeachPixels(matrix, a => a + c);
-        }
-
-        public static Matrix<float> Contrast(Matrix<float> matrix, ContrastArg arg)
-        {
-            var c = arg.C;
-            var k = arg.K;
-            return FloatMatrixImage.ForeachPixels(matrix, a => a * k + c);
+            Name = name;
         }
     }
 
     public static class Actions
     {
+        static public void Init(Type type)
+        {
+            StaticInfo.MethodContainer = type;
+            actions =
+            type.GetMethods().Where(a => a.GetCustomAttributes(typeof(MAttribute), true).Length>0).Select(
+                a =>
+                {
+                    ImageAction imageAction;
+                    //var ts = a.GetGenericArguments();
+                    MAttribute mAttribute = (MAttribute)a.GetCustomAttributes(typeof(MAttribute), true)[0];
+                    var ts = a.GetParameters();
+                    if (ts.Length > 1)
+                    {
+                        var t1 = typeof(ImageAction<>).MakeGenericType(new Type[] { ts[1].ParameterType });
+                        var t2 = typeof(MatrixAction<>).MakeGenericType(new Type[] { ts[1].ParameterType });
+                        imageAction = (ImageAction)Activator.CreateInstance(t1, mAttribute.Name, a.CreateDelegate(t2));
+                    }
+                    else imageAction = new ImageAction(mAttribute.Name, (MatrixAction)a.CreateDelegate(typeof(MatrixAction)));
+                    return imageAction;
+                }).ToArray();
+        }
         static ImageAction[] actions = new ImageAction[]
         {
-            new ImageAction<WaivletInput>("waivlet", "waivlet", Methods.Waivlet),
-            new ImageAction<WaivletInput>("invWaivlet", "invWaivlet", Methods.InvWaivlet),
-            new ImageAction<MatrixInput>("matrixS", "Сдвиг", Methods.MethodSdvig),
-            new ImageAction<TwoMatrixInput>("matrixDS", "Сдвиг двух матриц", Methods.MethodDSdvid),
-            new ImageAction<SimpleValue<int>>("erode", "Эрозия", Methods.Erode),
-            new ImageAction<SimpleValue<int>>("dilate", "Дилатация", Methods.Dilate),
-            new ImageAction<SimpleValue<float>>("brigth", "Яркость", Methods.Brightnest),
-            new ImageAction<ContrastArg>("contrast", "Контраст", Methods.Contrast)
+            // TODO: Список методов
+            // Не актуально
+            //new ImageAction<WaivletInput>("waivlet", "Вейвлет", Methods.SArg.Waivlet),
+            //new ImageAction<WaivletInput>("invWaivlet", "Обратный вейвлет", Methods.SArg.InvWaivlet),
+            //new ImageAction<MatrixInput>("matrixS", "Сдвиг", Methods.SArg.MethodSdvig),
+            //new ImageAction<TwoMatrixInput>("matrixDS", "Сдвиг двух матриц", Methods.SArg.MethodDSdvid),
+            //new ImageAction<SimpleValue<int>>("erode", "Эрозия", Methods.SArg.Erode),
+            //new ImageAction<SimpleValue<int>>("dilate", "Дилатация", Methods.SArg.Dilate),
+            //new ImageAction<MedianeIndexed>("mediane", "Медианная фильтрация", Methods.SArg.Mediane),
+            //new ImageAction<SimpleValue<float>>("brigth", "Яркость", Methods.SArg.Brightnest),
+            //new ImageAction<ContrastArg>("contrast", "Контраст", Methods.SArg.Contrast),
+            //new ImageAction<CutArg>("cut", "Вырезать", Methods.SArg.Cut),
+            //new ImageAction<GraphWArg>("graph", "График", Methods.SArg.CreateGraph),
+            //new ImageAction<StorageViewer>("save", "Сохранить", Methods.SArg.SaveCurrentImage),
+            //new ImageAction<StorageViewer>("load", "Загрузить", Methods.SArg.LoadImage),
+            //new ImageAction<MathArg>("math", "Функция", Methods.SArg.MathFunc),
         };
 
         static ReadOnlyDictionary<string, ImageAction> actionDict;

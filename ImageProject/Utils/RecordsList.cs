@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.Design;
@@ -54,6 +55,7 @@ namespace ImageProject.Utils
 
         void AddControl(Control c)
         {
+            c.Dock = DockStyle.Fill;
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
             tableLayoutPanel1.Controls.Add(c);
         }
@@ -142,7 +144,7 @@ namespace ImageProject.Utils
             });
         }
 
-        private void ActionList_ActionInvoked(ImageAction arg1, RecordArgument arg2)
+        private void ActionList_ActionInvoked(ImageAction arg1, RecordArgument arg2, bool prev)
         {
             Recorder.AddRecordInfo(new RecordItem(arg1, arg2));
         }
@@ -195,7 +197,7 @@ namespace ImageProject.Utils
             this.toolStripButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButton1.Name = "toolStripButton1";
             this.toolStripButton1.Size = new System.Drawing.Size(23, 22);
-            this.toolStripButton1.Text = "toolStripButton1";
+            this.toolStripButton1.Text = "Начать запись";
             this.toolStripButton1.Click += new System.EventHandler(this.toolStripButton1_Click);
             // 
             // toolStripButton2
@@ -205,12 +207,11 @@ namespace ImageProject.Utils
             this.toolStripButton2.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButton2.Name = "toolStripButton2";
             this.toolStripButton2.Size = new System.Drawing.Size(23, 22);
-            this.toolStripButton2.Text = "toolStripButton2";
+            this.toolStripButton2.Text = "Завершить запись";
             this.toolStripButton2.Click += new System.EventHandler(this.toolStripButton2_Click);
             // 
             // panel1
             // 
-            this.panel1.AutoScroll = true;
             this.panel1.Controls.Add(this.tableLayoutPanel1);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panel1.Location = new System.Drawing.Point(0, 25);
@@ -221,17 +222,17 @@ namespace ImageProject.Utils
             // tableLayoutPanel1
             // 
             this.tableLayoutPanel1.AutoSize = true;
-            this.tableLayoutPanel1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.tableLayoutPanel1.CellBorderStyle = System.Windows.Forms.TableLayoutPanelCellBorderStyle.Single;
             this.tableLayoutPanel1.ColumnCount = 1;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-            this.tableLayoutPanel1.RowCount = 2;
+            this.tableLayoutPanel1.RowCount = 1;
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(207, 0);
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(207, 2);
             this.tableLayoutPanel1.TabIndex = 0;
             // 
             // RecordsList
@@ -279,11 +280,25 @@ namespace ImageProject.Utils
         [DisplayName("Количество действий")]
         public int Count => RecordItems.Length;
         static BinaryFormatter formatter = new BinaryFormatter();
+        [TypeConverter(typeof(RecordTypeConverter))]
+        [DisplayName("Записи")]
         public RecordItem[] RecordItems { get; set; }
-        public void Invoke(FloatMatrixImage image)
+        public void Invoke(FloatMatrixImage image, Control control = null, int i = 0)
         {
-            foreach (var item in RecordItems)
-                item.Invoke(image);
+            if (i == 0)
+                foreach (var item in RecordItems)
+                    item.Invoke(image);
+            else
+            {
+                new Thread(() =>
+                {
+                    foreach (var item in RecordItems)
+                    {
+                        control.Invoke(new Action(() => item.Invoke(image)));
+                        Thread.Sleep(i);
+                    }
+                }).Start();
+            }
         }
         public RecordItemCollection(Stream stream)
         {
@@ -322,6 +337,59 @@ namespace ImageProject.Utils
             Save(stream);
             stream.Dispose();
         }
+
+
+        public class RecordTypeConverter : TypeConverter
+        {
+            class MyPropertyDescriptor : SimplePropertyDescriptor
+            {
+                private int index;
+                public override object GetValue(object component)
+                {
+                    if (component is Array array)
+                    {
+                        if (array.GetLength(0) > index)
+                        {
+                            return array.GetValue(index);
+                        }
+                    }
+                    return null;
+                }
+
+                public override void SetValue(object component, object value)
+                {
+                    if (component is Array array)
+                    {
+                        if (array.GetLength(0) > index)
+                        {
+                            array.SetValue(value, index);
+                        }
+                        OnValueChanged(component, EventArgs.Empty);
+                    }
+                }
+
+                public MyPropertyDescriptor(Type arrayType, Type elementType, int index)
+                    : base(arrayType, $"[{index}]", elementType, new Attribute[] { new TypeConverterAttribute(typeof(ExpandableObjectConverter))})
+                {
+                    this.index = index;
+                }
+                public override PropertyDescriptorCollection GetChildProperties(object instance, Attribute[] filter)
+                {
+                    return TypeDescriptor.GetProperties(instance, filter);
+                }
+            }
+            public override PropertyDescriptorCollection GetProperties(ITypeDescriptorContext context, object value, Attribute[] attributes)
+            {
+                var vs = (RecordItem[])value;
+                int index = 0;
+                return new PropertyDescriptorCollection(vs.Select(a => new MyPropertyDescriptor(value.GetType(), a.GetType(), index++)).ToArray());
+                return base.GetProperties(context, value, attributes);
+            }
+            public override bool GetPropertiesSupported(ITypeDescriptorContext context)
+            {
+                return true;
+            }
+        }
     }
 
     [Serializable]
@@ -330,6 +398,9 @@ namespace ImageProject.Utils
         //[NonSerialized]
         string actionId;
         [DisplayName("ID метода")]
+        [Editor(typeof(UIMyEditor), typeof(UITypeEditor))]
+        [EditorStyle(UITypeEditorEditStyle.DropDown)]
+        [EditorForm(typeof(ActionSelectListForm), nameof(ActionSelectListForm.Selected), nameof(ActionSelectListForm.Selected))]
         public string ActionID
         {
             get => actionId;
@@ -345,7 +416,7 @@ namespace ImageProject.Utils
         public RecordArgument argument { get; set; }
         public RecordItem()
         {
-
+            argument = new RecordArgument(null);   
         }
         //public RecordItem(ImageAction action, object argument)
         //{
@@ -366,6 +437,18 @@ namespace ImageProject.Utils
         public void Invoke(FloatMatrixImage image)
         {
             ActionList.InvokeAction(image, action, argument);
+        }
+
+        public override string ToString()
+        {
+            try
+            {
+                return $"{ActionList.Actions[this.actionId].ActionName}{(this.argument.isProfileName ? $"({this.argument.profileName})" : $"[{this.argument.argument}]")}";
+            }
+            catch
+            {
+                return $"Incorrect action ID: {actionId}";
+            }
         }
     }
 

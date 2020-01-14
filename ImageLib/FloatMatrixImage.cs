@@ -9,11 +9,30 @@ using System.ComponentModel;
 
 namespace ImageLib
 {
+    public class Storage : Dictionary<string, object>
+    {
+        public Matrix<float> GetImage(string key)
+        {
+            this.TryGetValue(key, out object value);
+            if (value == null) return null;
+            return value is Matrix<float> matrix ? matrix : null;
+        }
+        public void SetImage(string key, Matrix<float> value)
+        {
+            this[key] = value;
+        }
+    }
+
     public class FloatMatrixImage : Image, System.ComponentModel.INotifyPropertyChanged
     //<T> : Image where T:struct, System.IEquatable<T>, System.IFormattable
     {
+
+        //public static Storage Storage { get; } = new Storage();
         public static Matrix<float> CreateMatrixFloat(float[,] vs) =>
            Matrix<float>.Build.Dense(DenseColumnMajorMatrixStorage<float>.OfArray(vs));
+
+        public Matrix<float> Original { get; }
+
         FloatMatrixImage()
         {
             ImageDepth = ImageDepth.Single;
@@ -23,31 +42,21 @@ namespace ImageLib
         {
             Size = new Size(matrix.ColumnCount, matrix.RowCount);
             this.matrix = matrix;
+            Original = matrix;
             AddMatrix(matrix);
         }
-        public FloatMatrixImage(Size size) : this()
-        {
-            base.Size = size;
-            matrix = Matrix<float>.Build.Dense(size.Height, size.Width);
-            AddMatrix(matrix);
-        }
+        public FloatMatrixImage(Size size) : this(Matrix<float>.Build.Dense(size.Height, size.Width))
+        { }
 
-        public FloatMatrixImage(Size size, Func<int, int, float> init) : this()
-        {
-            base.Size = size;
-            matrix = Matrix<float>.Build.Dense(size.Height, size.Width, init);
-            AddMatrix(matrix);
-        }
+        public FloatMatrixImage(Size size, Func<int, int, float> init)
+            : this(Matrix<float>.Build.Dense(size.Height, size.Width, init))
+        { }
 
-        public FloatMatrixImage(Bitmap bitmap) : this()
-        {
-            var size = bitmap.Size;
-            Size = size;
-            matrix = Matrix<float>.Build.Dense(size.Height, size.Width, (x, y) => bitmap.GetPixel(y, x).R);
-            AddMatrix(matrix);
-        }
+        public FloatMatrixImage(Bitmap bitmap) 
+            : this(Matrix<float>.Build.Dense(bitmap.Height, bitmap.Width, (x, y) => bitmap.GetPixel(y, x).R))
+        { }
 
-        Matrix<float> matrix;
+        public Matrix<float> matrix;
 
         int index = -1;
         int max;
@@ -131,20 +140,20 @@ namespace ImageLib
         public static Matrix<float> Cont(Matrix<float> src, int[,] m1, int[,] m2)
         {
             Matrix<float> f1 = FloatMatrixImage.GetMatrix(src, m1);
-            Matrix<float> f2 = FloatMatrixImage.GetMatrix(src, m1);
+            Matrix<float> f2 = FloatMatrixImage.GetMatrix(src, m2);
             f1 = FloatMatrixImage.ForeachPixels(f1, m => m * m);
             f2 = FloatMatrixImage.ForeachPixels(f2, m => m * m);
-            f1 = f1 + f2;
+            f1 += f2;
             return FloatMatrixImage.ForeachPixels(f1, m => (float)Math.Sqrt(m));
         }
 
         public static Matrix<float> Cont(Matrix<float> src, float[,] m1, float[,] m2)
         {
             Matrix<float> f1 = FloatMatrixImage.GetMatrix(src, m1);
-            Matrix<float> f2 = FloatMatrixImage.GetMatrix(src, m1);
+            Matrix<float> f2 = FloatMatrixImage.GetMatrix(src, m2);
             f1 = FloatMatrixImage.ForeachPixels(f1, m => m * m);
             f2 = FloatMatrixImage.ForeachPixels(f2, m => m * m);
-            f1 = f1 + f2;
+            f1 += f2;
             return FloatMatrixImage.ForeachPixels(f1, m => (float)Math.Sqrt(m));
         }
         public static Matrix<float> ForeachPixels(Matrix<float> m, Func<float, float> func)
@@ -216,10 +225,21 @@ namespace ImageLib
 
         void AddMatrix(Matrix<float> matrix)
         {
+            int w = this.matrix.ColumnCount, h = this.matrix.RowCount;
+            int nw = matrix.ColumnCount, nh = matrix.RowCount;
             matrices[++index] = matrix;
             max = index;
             this.matrix = matrix;
             UpdateMinMax();
+            if (bitmap != null)
+            {
+                if (nw != w || h != nh)
+                {
+                    bitmap = CreateBitmap();
+                    UpdateBitmap(bitmap, true);
+                }
+                else UpdateBitmap(bitmap, false);
+            }
         }
 
         private void UpdateMinMax()
@@ -238,18 +258,32 @@ namespace ImageLib
         public bool Undo()
         {
             if (index == 0) return false;
+            int w = matrix.ColumnCount, h = matrix.RowCount;
             matrix = matrices[--index];
+            int nw = matrix.ColumnCount, nh = matrix.RowCount;
             UpdateMinMax();
-            UpdateBitmap(bitmap);
+            if (nw != w || h != nh)
+            {
+                bitmap = CreateBitmap();
+                UpdateBitmap(bitmap, true);
+            }
+            else UpdateBitmap(bitmap, false);
             return true;
         }
 
         public bool Redo()
         {
             if (index >= max) return false;
+            int w = matrix.ColumnCount, h = matrix.RowCount;
             matrix = matrices[++index];
+            int nw = matrix.ColumnCount, nh = matrix.RowCount;
             UpdateMinMax();
-            UpdateBitmap(bitmap);
+            if (nw != w || h != nh)
+            {
+                bitmap = CreateBitmap();
+                UpdateBitmap(bitmap, true);
+            }
+            else UpdateBitmap(bitmap, false);
             return true;
         }
 
@@ -272,7 +306,7 @@ namespace ImageLib
             {
                 if (minimalColorView == value) return;
                 minimalColorView = value;
-                UpdateBitmap(bitmap);
+                UpdateBitmap(bitmap, false);
             }
         }
 
@@ -285,7 +319,7 @@ namespace ImageLib
             {
                 if (maximumColorView == value) return;
                 maximumColorView = value;
-                UpdateBitmap(bitmap);
+                UpdateBitmap(bitmap, false);
             }
         }
 
@@ -296,14 +330,13 @@ namespace ImageLib
         public void Action(Action<Matrix<float>> action)
         {
             action.Invoke(matrix);
-            if (bitmap != null) UpdateBitmap(bitmap);
+            if (bitmap != null) UpdateBitmap(bitmap, false);
         }
 
         public void Func(Func<Matrix<float>, Matrix<float>> func)
         {
-            matrix = func.Invoke(matrix);
-            AddMatrix(matrix);
-            if (bitmap != null) UpdateBitmap(bitmap);
+            //matrix = ; 
+            AddMatrix(func.Invoke(matrix) ?? throw new NullReferenceException());
         }
 
         public Bitmap CreateBitmapCopy(int index)
@@ -316,7 +349,7 @@ namespace ImageLib
             if (bitmap == null)
             {
                 bitmap = CreateBitmap();
-                UpdateBitmap(bitmap);
+                UpdateBitmap(bitmap, true);
             }
             return bitmap;
         }
@@ -326,7 +359,7 @@ namespace ImageLib
             return CreateBitmap(matrix);
         }
 
-        private Bitmap CreateBitmap(Matrix<float> matrix)
+        public static Bitmap CreateBitmap(Matrix<float> matrix)
         {
             Bitmap bitmap = new Bitmap(matrix.ColumnCount, matrix.RowCount, PixelFormat.Format8bppIndexed);
             var palette = bitmap.Palette;
@@ -339,11 +372,11 @@ namespace ImageLib
             return bitmap;
         }
 
-        private void UpdateBitmap(Bitmap bitmap)
+        public static void FillBitmap(Bitmap bitmap, Matrix<float> matrix, float minColor, float maxColor)
         {
             BitmapData bitmapData = bitmap.LockBits(new Rectangle(Point.Empty, bitmap.Size),
-                                                    ImageLockMode.WriteOnly,
-                                                    PixelFormat.Format8bppIndexed);
+                                                  ImageLockMode.WriteOnly,
+                                                  PixelFormat.Format8bppIndexed);
             IntPtr intPtr = bitmapData.Scan0;
             int stride = bitmapData.Stride;
             int bytes = Math.Abs(stride) * bitmap.Height;
@@ -369,14 +402,14 @@ namespace ImageLib
             //case ImageDepth.Single:
             //    {
             Matrix<float> matrixS = matrix;
-            if(minimalColorView!=0||maximumColorView!=255)
+            if (minColor != 0 || maxColor != 255)
             {
                 //float d2 = MaximalColor - MinimalColor;
-                float mid = (maximumColorView + minimalColorView) / 2;
-                float range = maximumColorView - minimalColorView;
+                float mid = (maxColor + minColor) / 2;
+                float range = maxColor - minColor;
                 float scale = 255 / range;
 
-                float sub = minimalColorView;
+                float sub = minColor;
 
                 if (scale != 1)
                 {
@@ -394,7 +427,7 @@ namespace ImageLib
                 }
                 // (src - sub) * scale;
 
-                
+
 
                 // d1 = 511 - 0
                 // dst = src / (d1 / 255)
@@ -406,7 +439,7 @@ namespace ImageLib
                 // d1 = 1024 - 512
                 // d1 / 255
 
-                
+
 
             }
             float[,] dataS = matrixS.ToArray();
@@ -434,9 +467,122 @@ namespace ImageLib
             //}
             System.Runtime.InteropServices.Marshal.Copy(vs, 0, intPtr, bytes);
             bitmap.UnlockBits(bitmapData);
-            BitmapUpdated?.Invoke(this, EventArgs.Empty);
         }
-        public event EventHandler BitmapUpdated;
+
+        private void UpdateBitmap(Bitmap bitmap, bool createNew)
+        {
+            FillBitmap(bitmap, matrix, minimalColorView, maximumColorView);
+
+            //BitmapData bitmapData = bitmap.LockBits(new Rectangle(Point.Empty, bitmap.Size),
+            //                                        ImageLockMode.WriteOnly,
+            //                                        PixelFormat.Format8bppIndexed);
+            //IntPtr intPtr = bitmapData.Scan0;
+            //int stride = bitmapData.Stride;
+            //int bytes = Math.Abs(stride) * bitmap.Height;
+            //byte[] vs = new byte[bytes];
+            ////switch (ImageDepth)
+            ////{
+            //////case ImageDepth.Byte:
+            //////    {
+            //////        Matrix<byte> matrixB = matrix as Matrix<byte>;
+            //////        byte[,] dataB = matrixB.AsArray();
+            //////        int cols = dataB.GetLength(0);
+            //////        int rows = dataB.GetLength(1);
+            //////        int index = 0;
+            //////        for (int i = 0; i < rows; i++)
+            //////        {
+            //////            for (int j = 0; j < cols; j++)
+            //////            {
+            //////                vs[index++] = dataB[i, j];
+            //////            }
+            //////        }
+            //////    }
+            //////    break;
+            ////case ImageDepth.Single:
+            ////    {
+            //Matrix<float> matrixS = matrix;
+            //if(minimalColorView!=0||maximumColorView!=255)
+            //{
+            //    //float d2 = MaximalColor - MinimalColor;
+            //    float mid = (maximumColorView + minimalColorView) / 2;
+            //    float range = maximumColorView - minimalColorView;
+            //    float scale = 255 / range;
+
+            //    float sub = minimalColorView;
+
+            //    if (scale != 1)
+            //    {
+            //        matrixS = ForeachPixels(matrixS, f =>
+            //        {
+            //            return (f - sub) * scale;
+            //        });
+            //    }
+            //    else
+            //    {
+            //        matrixS = ForeachPixels(matrixS, f =>
+            //        {
+            //            return (f - sub);
+            //        });
+            //    }
+            //    // (src - sub) * scale;
+
+                
+
+            //    // d1 = 511 - 0
+            //    // dst = src / (d1 / 255)
+
+            //    // d1 = 511 - 256
+            //    // dst = src - 256 / (d1 / 255)
+            //    // -256
+
+            //    // d1 = 1024 - 512
+            //    // d1 / 255
+
+                
+
+            //}
+            //float[,] dataS = matrixS.ToArray();
+            //int cols = dataS.GetLength(0);
+            //int rows = dataS.GetLength(1);
+            //int index = 0;
+            //for (int i = 0; i < cols; i++)
+            //{
+            //    int v = i * stride;
+            //    for (int j = 0; j < rows; j++)
+            //    {
+            //        byte data;
+            //        var fdata = dataS[i, j];
+            //        if (fdata > 255) data = 255;
+            //        else if (fdata < 0) data = 0;
+            //        else data = (byte)dataS[i, j];
+            //        vs[v + j] = data;
+            //        //vs[index++] = data;
+            //        //vs[index++] = data;
+            //        //vs[index++] = 255;
+            //    }
+            //}
+            ////        }
+            ////        break;
+            ////}
+            //System.Runtime.InteropServices.Marshal.Copy(vs, 0, intPtr, bytes);
+            //bitmap.UnlockBits(bitmapData);
+            BitmapUpdated?.Invoke(this, new EventArgsBitmapUpdated(bitmap, createNew));
+        }
+        public event EventHandler<EventArgsBitmapUpdated> BitmapUpdated;
         public event PropertyChangedEventHandler PropertyChanged;
+
+
+        public class EventArgsBitmapUpdated
+        {
+            public EventArgsBitmapUpdated(Bitmap bitmap, bool createNew)
+            {
+                Bitmap = bitmap ?? throw new ArgumentNullException(nameof(bitmap));
+                CreateNew = createNew;
+            }
+
+            public bool CreateNew { get; }
+            public Bitmap Bitmap { get; }
+
+        }
     }
 }

@@ -18,8 +18,14 @@ namespace ImageProject
         {
             return FormParams.LoadProfile(methodID, profID);
         }
-        public static FloatMatrixImage FloatMatrixImage { get; set; }
-        public static Matrix<float> SelectedMatrix { get; set; } 
-        public static Storage Storage { get; } = new Storage();
+        //public static FloatMatrixImage FloatMatrixImage { get; set; }
+        public static Matrix<float> SelectedMatrix { get; set; }
+        public static Storage Storage { get; }
+
+        static StaticInfo()
+        {
+            Storage = new Storage { StoragePath = "Storage" };
+            Storage.LoadAll();
+        }
     }
 }

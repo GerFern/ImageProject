@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>ee4e7473-f9f8-4dea-b610-0b9e2f5ccffb</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>Shared.WinFormsPlatform</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)BitmapHandler.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)BitmapUtils.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ImageHistoryView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)ImageHistoryView.Designer.cs">
+      <DependentUpon>ImageHistoryView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)Initializer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LibHandler.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)MainForm.Designer.cs">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)MatrixImageView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)MatrixImageView.Designer.cs">
+      <DependentUpon>MatrixImageView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)Program.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)WinFormsPlatformImpl.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)ImageHistoryView.resx">
+      <DependentUpon>ImageHistoryView.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

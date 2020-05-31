@@ -1,10 +1,8 @@
-﻿using ImageLib;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
-using System.Drawing.Design;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
@@ -35,16 +33,16 @@ namespace ImageProject
             MProperty = mProperty;
             mProperty.PropertyChanged += MProperty_PropertyChanged;
             //mProperty.PropertyChanged += new 
-
+            viewContainerCollection1.Storage = StaticInfo.Storage;
             PictureBox = this.zoomPictureBox1;
         }
 
         private void MProperty_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if(e.PropertyName==nameof(MProperty.MatrixImage))
-            {
-                MProperty.MatrixImage.PropertyChanged += MatrixImage_PropertyChanged;
-            }
+            //if(e.PropertyName==nameof(MProperty.MatrixImage))
+            //{
+            //    MProperty.MatrixImage.PropertyChanged += MatrixImage_PropertyChanged;
+            //}
             propertyGrid1.Refresh();
         }
 
@@ -76,25 +74,25 @@ namespace ImageProject
 
         private void открытьToolStripMenuItem_Click_1(object sender, EventArgs e)
         {
-            var t = new OpenFileDialog();
-            if (t.ShowDialog() == DialogResult.OK)
-            {
-                var img = new FloatMatrixImage((Bitmap)Bitmap.FromFile(t.FileName));
-                StaticInfo.FloatMatrixImage = img;
-                zoomPictureBox1.Image = img.GetBitmap();
-                actionList1.SelectedImage = img;
-                recordsList1.SelectedImage = img;
-                img.BitmapUpdated += new EventHandler<FloatMatrixImage.EventArgsBitmapUpdated>((o, be) =>
-                {
-                    if (be.CreateNew)
-                    {
-                        zoomPictureBox1.Image = img.GetBitmap();
-                    }
-                    else
-                        zoomPictureBox1.Invalidate();
-                });
-                MProperty.MatrixImage = img;
-            }
+            //var t = new OpenFileDialog();
+            //if (t.ShowDialog() == DialogResult.OK)
+            //{
+            //    var img = new FloatMatrixImage((Bitmap)Bitmap.FromFile(t.FileName));
+            //    StaticInfo.FloatMatrixImage = img;
+            //    zoomPictureBox1.Image = img.GetBitmap();
+            //    actionList1.SelectedImage = img;
+            //    recordsList1.SelectedImage = img;
+            //    img.BitmapUpdated += new EventHandler<FloatMatrixImage.EventArgsBitmapUpdated>((o, be) =>
+            //    {
+            //        if (be.CreateNew)
+            //        {
+            //            zoomPictureBox1.Image = img.GetBitmap();
+            //        }
+            //        else
+            //            zoomPictureBox1.Invalidate();
+            //    });
+            //    MProperty.MatrixImage = img;
+            //}
         }
 
         private void отменитьToolStripMenuItem_Click(object sender, EventArgs e)
@@ -203,14 +201,6 @@ namespace ImageProject
         }
     }
 
-    public class FormT : Form
-    {
-        [Editor(typeof(UIMyEditor), typeof(UITypeEditor))]
-        [EditorStyle(UITypeEditorEditStyle.Modal)]
-        [EditorForm(typeof(Form1), "", "")]
-        public string TTT { get; set; }
-    }
-
     public class MProperty : INotifyPropertyChanged
     {
         [ReadOnly(true)]
@@ -228,7 +218,7 @@ namespace ImageProject
             }
         }
         [TypeConverter(typeof(ExpandableObjectConverter))]
-        public FloatMatrixImage MatrixImage { get; set; }
+        //public FloatMatrixImage MatrixImage { get; set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
     }

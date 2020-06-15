@@ -10,49 +10,14 @@ using System.Runtime.Serialization;
 using System.ComponentModel;
 using OpenCvSharp;
 using ImageLib.Utils;
+using ReactiveUI;
 
 namespace ImageLib.Image
 {
-    public static class MatrixLayerBuilder
-    {
-        public static IMatrixLayer CreateLayer(Type elementType, int width, int height)
-        {
-            return (IMatrixLayer)Activator.CreateInstance(typeof(MatrixLayer<>).MakeGenericType(elementType), width, height);
-        }
-
-        public static IMatrixLayer CreateLayer(Array matrix)
-        {
-            Type elementType = matrix.GetType().GetElementType();
-            return (IMatrixLayer)Activator.CreateInstance(typeof(MatrixLayer<>).MakeGenericType(elementType), matrix);
-        }
-
-        public static IMatrixLayer CreateLayer(int width, int height, Array singleArray, bool copyArray = true)
-        {
-            Type elementType = singleArray.GetType().GetElementType();
-            return (IMatrixLayer)Activator.CreateInstance(typeof(MatrixLayer<>).MakeGenericType(elementType), width, height, singleArray, copyArray);
-        }
-
-        public static IMatrixLayer CreateLayer(int width, int height, IEnumerable elements)
-        {
-            int length = width * height;
-            if (width * height == 0) return new MatrixLayer<byte>(width, height);
-            var en = elements.GetEnumerator();
-            if (!en.MoveNext()) return new MatrixLayer<byte>(width, height);
-            object first = en.Current;
-            Type elementType = first.GetType();
-            Array arr = Array.CreateInstance(elementType, length);
-            arr.SetValue(first, 0);
-            for (int i = 1; i < length && en.MoveNext(); i++)
-            {
-                arr.SetValue(en.Current, i);
-            }
-            return (IMatrixLayer)Activator.CreateInstance(typeof(MatrixLayer<>).MakeGenericType(elementType), width, height, arr, false);
-        }
-    }
 
     [TypeConverter(typeof(ExpandableObjectConverter))]
     [Serializable]
-    public class MatrixLayer<TElement> : ISerializable, IEnumerable<TElement>, ICloneable, IMatrixLayer where TElement : unmanaged/*, IComparable<TElement>*/
+    public class MatrixLayer<TElement> : ReactiveObject, ISerializable, IEnumerable<TElement>, ICloneable, IMatrixLayer where TElement : unmanaged/*, IComparable<TElement>*/
     {
         public Dictionary<string, TagInfo> Tags { get; }
                 = new Dictionary<string, TagInfo>();
@@ -210,12 +175,14 @@ namespace ImageLib.Image
         protected virtual void OnUpdate(UpdateLayer update)
         {
             if (!supressUpdate && sukeys.Count == 0) Updated?.Invoke(this, update);
+            this.RaisePropertyChanged("This");
         }
 
         public virtual void OnUpdate(Update update, (int x, int y, int width, int height)? rectangleUpdate)
         {
             if (!rectangleUpdate.HasValue) rectangleUpdate = (0, 0, Width, Height);
             if (!supressUpdate && sukeys.Count == 0) Updated?.Invoke(this, new UpdateLayer(this, update, rectangleUpdate.Value));
+            this.RaisePropertyChanged("This");
         }
 
         public event EventHandler<UpdateLayer> Updated;
@@ -242,10 +209,12 @@ namespace ImageLib.Image
         {
             AutoDisposable key = new AutoDisposable() { AutoRelease = autoRelease };
             rokeys.Add(key);
+            if (rokeys.Count == 1) this.RaisePropertyChanged(nameof(IsReadOnly));
             void release()
             {
                 rokeys.Remove(key);
                 key.Released -= release;
+                if (rokeys.Count == 0) this.RaisePropertyChanged(nameof(IsReadOnly));
             }
             key.Released += release;
             return key;

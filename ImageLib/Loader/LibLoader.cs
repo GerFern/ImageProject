@@ -1,4 +1,5 @@
 ﻿using ImageLib.Controller;
+using ImageLib.Model;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -41,7 +42,7 @@ namespace ImageLib.Loader
         static private Dictionary<AppDomain, LibInfo> domainLibs;
         static public ReadOnlyDictionary<AppDomain, LibInfo> DomainLibs { get; }
         static public ReadOnlyDictionary<Assembly, LibInfo> Libs { get; }
-        static public MenuItem RootMethodItem { get; }
+        static public MenuModelOld RootMethodItem { get; }
 
         static LibLoader()
         {
@@ -49,7 +50,7 @@ namespace ImageLib.Loader
             DomainLibs = new ReadOnlyDictionary<AppDomain, LibInfo>(domainLibs);
             libs = new Dictionary<Assembly, LibInfo>();
             Libs = new ReadOnlyDictionary<Assembly, LibInfo>(libs);
-            RootMethodItem = new MenuItem() { Name = "root" };
+            RootMethodItem = new MenuModelOld() { Name = "root" };
             AppDomain.CurrentDomain.AssemblyLoad += (_, e) =>
             {
                 Load(e.LoadedAssembly);
@@ -243,7 +244,7 @@ namespace ImageLib.Loader
         {
             Domain = domain;
             Assembly = assembly;
-            Registers = new Registers();
+            Registers = new Registers(MainMenuModel.Instance);
         }
     }
 
@@ -268,6 +269,63 @@ namespace ImageLib.Loader
     //[Serializable]
     public class Registers
     {
+        public MainMenuModel MainMenu { get; }
+
+        public Registers(MainMenuModel menuModel) : this()
+        {
+            MainMenu = menuModel;
+        }
+
+        public void AddMenu(MenuModel menuModel, MenuModel parent = null)
+        {
+            if (parent == null)
+                MainMenu.Add(menuModel);
+            else
+            {
+                parent.Items.Add(menuModel);
+                menuModel.Parent = parent;
+            }
+        }
+
+        public void AddMenu(MenuModel menuModel, string[] directory)
+        {
+            if (directory.Length == 0)
+                AddMenu(menuModel);
+            else AddMenu(menuModel, Find(directory));
+        }
+
+        public Registers WithMenuModel(MenuModel menuModel, MenuModel parent = null)
+        {
+            AddMenu(menuModel, parent);
+            return this;
+        }
+
+        public Registers WithMenuModel(MenuModel menuModel, string[] directory)
+        {
+            AddMenu(menuModel, directory);
+            return this;
+        }
+
+        public MenuModel Find(params string[] directory)
+        {
+            MenuModel current = MainMenu.Where(a => a.Header == directory[0]).FirstOrDefault();
+            foreach (var item in directory.Skip(1))
+            {
+                var tmp = current.Items.Where(a => a.Header == item).FirstOrDefault();
+                if (tmp == null)
+                {
+                    tmp = new MenuModel()
+                    {
+                        Header = item,
+                        Parent = current
+                    };
+                    current.Items.Add(tmp);
+                }
+                current = tmp;
+            }
+            return current;
+        }
+
         private List<ActionRegister> actionRegisters = new List<ActionRegister>();
         private List<ItemRegister> methodRegisters = new List<ItemRegister>();
         private List<LocaleString> localeRegisters = new List<LocaleString>();
@@ -313,6 +371,7 @@ namespace ImageLib.Loader
         {
             actionRegisters.Add(actionRegister);
             ItemRegistered?.Invoke(actionRegister);
+
             return this;
         }
 
@@ -367,7 +426,7 @@ namespace ImageLib.Loader
 
         #endregion LocaleReg
 
-        public Registers()
+        private Registers()
         {
             MethodRegisters = new ReadOnlyCollection<ItemRegister>(methodRegisters);
             LocaleRegisters = new ReadOnlyCollection<LocaleString>(localeRegisters);

@@ -1,0 +1,101 @@
+using Utils;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Threading;
+
+
+    public class StepBase
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual void Wait()
+        {
+            // Nothing
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual void Step()
+        {
+            // Nothing
+        }
+    }
+
+    /// <summary>
+    /// Реализует блокировку
+    /// </summary>
+    public class StepSync : StepBase
+    {
+        public static StepSync Instance { get; } = new StepSync();
+        private System.Threading.AutoResetEvent ev = new System.Threading.AutoResetEvent(false);
+        private bool enabled = true;
+        private readonly object __lock = new object();
+        
+        /// <summary>
+        /// При блокировке переходить к отладчику
+        /// </summary>
+        public bool EnableDebugBreak { get; set; }
+
+        /// <summary>
+        /// Блокировка включена
+        /// </summary>
+        public bool EnableWaiting
+        {
+            get => enabled;
+            set
+            {
+                if (value)
+                {
+                    enabled = true;
+                    ev.Reset();
+                }
+                else
+                {
+                    enabled = false;
+                    ev.Set();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Блокировка
+        /// </summary>
+        public override void Wait()
+        {
+            lock (__lock) // Чтобы избежать ситуации, когда enabled выставляется в false,
+                          // а поток успевает уйти в ожидание
+            {
+                if (enabled)
+                {
+                    ev.Reset(); // Сброс
+                    OnEntry(); // Вызов события Entry, для уведомления подписчикам
+                    ev.WaitOne(); // Блокировка потока
+                    if (EnableDebugBreak && enabled) Debugger.Break();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Разблокировать шаг
+        /// </summary>
+        public override void Step()
+        {
+            ev.Set();
+            OnSteped();
+        }
+
+        protected virtual void OnEntry()
+        {
+            if (Entry != null)
+            {
+                var st = new StackTrace(2, true);
+                Entry(st);
+            }
+        }
+
+        protected virtual void OnSteped()
+        {
+        }
+
+        public event Action<StackTrace> Entry;
+
+        public event Action Steped;
+    }

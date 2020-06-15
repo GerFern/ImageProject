@@ -59,6 +59,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFormsImpl", "WinFormsImp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AvaloniaSupport", "AvaloniaSupport\AvaloniaSupport.csproj", "{18763E1E-34DE-434D-91DA-19BBF7222BEC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvalonPlatform", "AvalonPlatform\AvalonPlatform.csproj", "{5D9BF3CD-401E-41D4-B9E2-9705191C0B3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App", "App\App.csproj", "{8C0427A5-2160-408F-A54C-A93DD880D357}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		C:\Users\GerFern\source\repos\ImageProject\WinFormsScripting\WinFormsScripting.projitems*{31c0d77c-0016-42a7-98da-ecb5ec2217a9}*SharedItemsImports = 5
@@ -149,6 +153,14 @@ Global
 		{18763E1E-34DE-434D-91DA-19BBF7222BEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{18763E1E-34DE-434D-91DA-19BBF7222BEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{18763E1E-34DE-434D-91DA-19BBF7222BEC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D9BF3CD-401E-41D4-B9E2-9705191C0B3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D9BF3CD-401E-41D4-B9E2-9705191C0B3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D9BF3CD-401E-41D4-B9E2-9705191C0B3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D9BF3CD-401E-41D4-B9E2-9705191C0B3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C0427A5-2160-408F-A54C-A93DD880D357}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C0427A5-2160-408F-A54C-A93DD880D357}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C0427A5-2160-408F-A54C-A93DD880D357}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C0427A5-2160-408F-A54C-A93DD880D357}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -172,6 +184,8 @@ Global
 		{AFB11ED5-DC93-4106-957E-56DD4D8C5233} = {18B2F4E9-5D23-4120-9F2A-7ACE461FD400}
 		{6A3998E2-3AAA-4711-AEDB-99A346477EBB} = {D7BEFD75-CC41-4427-980F-A065E095B92A}
 		{18763E1E-34DE-434D-91DA-19BBF7222BEC} = {D7BEFD75-CC41-4427-980F-A065E095B92A}
+		{5D9BF3CD-401E-41D4-B9E2-9705191C0B3A} = {57EAF2E2-8A30-423E-B4BE-288920177D13}
+		{8C0427A5-2160-408F-A54C-A93DD880D357} = {57EAF2E2-8A30-423E-B4BE-288920177D13}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FA264A04-C94E-43D0-9E8A-D168D1D360BA}

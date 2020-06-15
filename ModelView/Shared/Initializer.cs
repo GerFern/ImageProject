@@ -1,6 +1,7 @@
 ﻿using ImageLib.Controller;
 using ImageLib.Image;
 using ImageLib.Loader;
+using ImageLib.Model;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 using ModelBase;
@@ -52,19 +53,32 @@ namespace Shared.WinFormsPlatform
 
         partial void RegisterItems(Registers registers)
         {
+            MenuModel tool = new MenuModel()
+            {
+                Header = "Инструменты"
+            };
+
             registers
-                .RegisterAction(() => ScriptEditor.ShowEditor(), "Скрипт", strPlatform)
-                .RegisterAction(() => StepSync.Instance.Step(), "Шаг", strDebug)
-                .RegisterAction(() => StepSync.Instance.EnableWaiting = !StepSync.Instance.EnableWaiting, "Переключить режим отладки", strDebug)
-                .RegisterAction(() => StepSync.Instance.EnableDebugBreak = !StepSync.Instance.EnableDebugBreak, "Переключить режим остановки отладчика", strDebug)
-                .RegisterMethod<MapProcessing>(true, "Поиск точек", strDebug)
-                .RegisterAction(() =>
-                {
-                    Map.Instance.CustomBuildLines = null;
-                    Map.Instance.ConnectCustom = null;
-                    Map.Instance.ConnectInArrayCustom = null;
-                }, "1 способ соединений", strDebug)
-                .RegisterAction(() => Map.Instance.SetCustomBuild1(), "2 способ соединений", strDebug);
+                .WithMenuModel(tool)
+                .WithMenuModel(MenuModel.Create("Шаг", StepSync.Instance.Step), tool)
+                .WithMenuModel(MenuModel.Create("Переключить режим отладки",
+                    () => StepSync.Instance.EnableWaiting = !StepSync.Instance.EnableWaiting), tool)
+                .WithMenuModel(MenuModel.Create("Переключить режим остановки отладчика",
+                    () => StepSync.Instance.EnableDebugBreak = !StepSync.Instance.EnableDebugBreak), tool)
+                .WithMenuModel(new MethodMenuModel(typeof(MapProcessing)) { Header = "Поиск точек" }, tool);
+            //registers
+            //    .RegisterAction(() => ScriptEditor.ShowEditor(), "Скрипт", strPlatform)
+            //    .RegisterAction(() => StepSync.Instance.Step(), "Шаг", strDebug)
+            //    .RegisterAction(() => StepSync.Instance.EnableWaiting = !StepSync.Instance.EnableWaiting, "Переключить режим отладки", strDebug)
+            //    .RegisterAction(() => StepSync.Instance.EnableDebugBreak = !StepSync.Instance.EnableDebugBreak, "Переключить режим остановки отладчика", strDebug)
+            //    .RegisterMethod<MapProcessing>(true, "Поиск точек", strDebug)
+            //    .RegisterAction(() =>
+            //    {
+            //        Map.Instance.CustomBuildLines = null;
+            //        Map.Instance.ConnectCustom = null;
+            //        Map.Instance.ConnectInArrayCustom = null;
+            //    }, "1 способ соединений", strDebug)
+            //    .RegisterAction(() => Map.Instance.SetCustomBuild1(), "2 способ соединений", strDebug);
         }
     }
 

@@ -37,7 +37,7 @@ namespace Shared.WinFormsPlatform
         {
         }
 
-        private static void MethodItem_AddChild(object methodItem, MenuItem child)
+        private static void MethodItem_AddChild(object methodItem, MenuModelOld child)
         {
             //Program.Invoke(() =>
             //{
@@ -77,7 +77,7 @@ namespace Shared.WinFormsPlatform
         //    methodItems[mi].onClick.Add(obj);
         //}
 
-        private static object CreateButton(string name, MenuItem item)
+        private static object CreateButton(string name, MenuModelOld item)
         {
             ToolStripMenuItem toolStripMenuItem = new ToolStripMenuItem(name);
             toolStripMenuItem.Click += (_, __) => item.Activate();

@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Avalonia.Collections;
+using Avalonia.Media.Imaging;
+using ImageLib.Model.Drawing;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -16,6 +19,7 @@ namespace ImageLib.Image
         bool IsDisposed { get; }
         Dictionary<string, TagInfo> Tags { get; }
 
+        AvaloniaList<DrawModel> DrawModels { get; }
         IMatrixImage ConvertTo(Type elementType);
 
         MatrixImage<TOtherElement> ConvertTo<TOtherElement>() where TOtherElement : unmanaged, IComparable<TOtherElement>;
@@ -83,9 +87,9 @@ namespace ImageLib.Image
         }
 
         void OnUpdate(Update update, (int x, int y, int width, int height)? rectangleUpdate);
+        WriteableBitmap CreateBitmap();
 
         event EventHandler<UpdateImage> Updated;
-
         event EventHandler Disposed;
     }
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ReactiveUI;
+using System;
 
 namespace ImageLib.Loader
 {
@@ -6,11 +7,13 @@ namespace ImageLib.Loader
     /// Зарегестированный метод
     /// </summary>
     [Serializable]
-    public abstract class BaseMethod: IDisposable
+    public abstract class BaseMethod: ReactiveObject, IDisposable
     {
         public virtual bool ValidateInput(object input) => true;
         public virtual bool CheckParams() => true;
         public abstract object Invoke(object input);
+
+        public virtual string GetHistoryMessage(string menu) => menu;
         
         #region IDisposable Support
         private bool disposedValue = false; // Для определения избыточных вызовов

@@ -55,7 +55,7 @@ namespace ImageLib.Loader
         /// Создание корневого панели меню
         /// </summary>
         /// <returns></returns>
-        public abstract object CreateMainMenuItem(MenuItem rootItem);
+        public abstract object CreateMainMenuItem(MenuModelOld rootItem);
 
         /// <summary>
         /// Создание дочернего элемента меню
@@ -64,7 +64,7 @@ namespace ImageLib.Loader
         /// <param name="item"></param>
         /// <param name="onClick"></param>
         /// <returns></returns>
-        public abstract object CreateMenuItem(object parentMenuItem, MenuItem item);
+        public abstract object CreateMenuItem(object parentMenuItem, MenuModelOld item);
 
         /// <summary>
         /// Выбрать одно из действий. Можно вернуть <see cref="null"/> для отмены

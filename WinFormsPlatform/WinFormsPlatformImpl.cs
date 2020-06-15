@@ -84,12 +84,12 @@ namespace Shared.WinFormsPlatform
             else return @delegate.Method.Invoke(null, vs);
         }
 
-        public override object CreateMainMenuItem(MenuItem item)
+        public override object CreateMainMenuItem(MenuModelOld item)
         {
             return new MenuStrip() { Tag = item };
         }
 
-        public override object CreateMenuItem(object parentMenuItem, MenuItem item)
+        public override object CreateMenuItem(object parentMenuItem, MenuModelOld item)
         {
             return Program.Invoke(() =>
             {
@@ -100,7 +100,7 @@ namespace Shared.WinFormsPlatform
             });
         }
 
-        protected virtual ToolStripMenuItem CreateToolStripMenuItem(MenuItem item)
+        protected virtual ToolStripMenuItem CreateToolStripMenuItem(MenuModelOld item)
         {
             ToolStripMenuItem menuItem = new ToolStripMenuItem(item.GetLocaleName()) { Tag = item };
             menuItem.Click += (_, __) => item.Activate();

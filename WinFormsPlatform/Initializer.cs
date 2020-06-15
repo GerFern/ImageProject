@@ -44,50 +44,52 @@ namespace Shared.WinFormsPlatform
 
         public override void Initialize(Registers registers)
         {
-            registers.ItemRegistered += Registers_MethodRegistered;
-            // Возможности платформы. Можно будет переделать на что-либо, кроме WinForms
-            // Хотелось бы выбрать AvaloniaUI (кроссплатформеный UI), но к сожалению времени не хватает
-            var platform = new WinFormsPlatformImpl();
             PreInitActions();
-            EventWaitHandle eventWaitHandle = new EventWaitHandle(false, EventResetMode.ManualReset);
-            Thread appThread = new Thread(() =>
-            {
-                registers.RegisterPlatform(platform);
-                MainForm mainForm = (MainForm)platform.MainWindowInstance;
-                mainForm.HandleCreated += (_, __) => eventWaitHandle.Set();
-                Program.applicationContext = new ApplicationContext(mainForm);
-                mainForm.Controls.Add((MenuStrip)platform.MainMenuElement);
-                mainForm.MainMenuStrip = (MenuStrip)platform.MainMenuElement;
-                mainForm.HandleCreated += (_, __) =>
-                    new Thread(() =>
-                    {
-                        // Регистрация действий (появятся кнопки в меню верхней панели главной формы)
-                        registers
-                            .RegisterAction(Open, strOpen, strPlatform)
-                            .RegisterAction(OpenFromClipboard, strClipboard, strPlatform)
-                            .RegisterAction(Save, strSave, strPlatform)
-                            .RegisterAction(ClearHistory, strClearH, strPlatform)
-                            .RegisterAction(OpenHistory, strOpenH, strPlatform)
-                            .RegisterAction(SaveHistory, strSaveH, strPlatform)
-                            .RegisterAction(Execute, strExecute, strPlatform);
+            RegisterItems(registers);
+            //registers.ItemRegistered += Registers_MethodRegistered;
+            //// Возможности платформы. Можно будет переделать на что-либо, кроме WinForms
+            //// Хотелось бы выбрать AvaloniaUI (кроссплатформеный UI), но к сожалению времени не хватает
+            //var platform = new WinFormsPlatformImpl();
+            //PreInitActions();
+            //EventWaitHandle eventWaitHandle = new EventWaitHandle(false, EventResetMode.ManualReset);
+            //Thread appThread = new Thread(() =>
+            //{
+            //    registers.RegisterPlatform(platform);
+            //    MainForm mainForm = (MainForm)platform.MainWindowInstance;
+            //    mainForm.HandleCreated += (_, __) => eventWaitHandle.Set();
+            //    Program.applicationContext = new ApplicationContext(mainForm);
+            //    mainForm.Controls.Add((MenuStrip)platform.MainMenuElement);
+            //    mainForm.MainMenuStrip = (MenuStrip)platform.MainMenuElement;
+            //    mainForm.HandleCreated += (_, __) =>
+            //        new Thread(() =>
+            //        {
+            //            // Регистрация действий (появятся кнопки в меню верхней панели главной формы)
+            //            registers
+            //                .RegisterAction(Open, strOpen, strPlatform)
+            //                .RegisterAction(OpenFromClipboard, strClipboard, strPlatform)
+            //                .RegisterAction(Save, strSave, strPlatform)
+            //                .RegisterAction(ClearHistory, strClearH, strPlatform)
+            //                .RegisterAction(OpenHistory, strOpenH, strPlatform)
+            //                .RegisterAction(SaveHistory, strSaveH, strPlatform)
+            //                .RegisterAction(Execute, strExecute, strPlatform);
 
-                        // Дополнительная регистрация действий
-                        RegisterItems(registers);
+            //            // Дополнительная регистрация действий
+            //            RegisterItems(registers);
 
-                        // Загрузка плагинов
-                        LibHandler.Start();
-                    })
-                    { Name = "LibLoader" }.Start();
-                AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
-                Application.ThreadException += Application_ThreadException;
-                Application.Run(Program.applicationContext);
-            })
-            { Name = "AppThread" };
-            appThread.SetApartmentState(ApartmentState.STA);
-            appThread.Start();
-            eventWaitHandle.WaitOne();
-            //Thread.Sleep(1000);
-            eventWaitHandle.Close();
+            //            // Загрузка плагинов
+            //            LibHandler.Start();
+            //        })
+            //        { Name = "LibLoader" }.Start();
+            //    AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            //    Application.ThreadException += Application_ThreadException;
+            //    Application.Run(Program.applicationContext);
+            //})
+            //{ Name = "AppThread" };
+            //appThread.SetApartmentState(ApartmentState.STA);
+            //appThread.Start();
+            //eventWaitHandle.WaitOne();
+            ////Thread.Sleep(1000);
+            //eventWaitHandle.Close();
         }
 
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)

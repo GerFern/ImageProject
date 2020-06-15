@@ -13,84 +13,17 @@ using ImageLib.Utils.ImageUtils;
 using System.ComponentModel;
 using ImageLib.Utils;
 using System.Collections.Immutable;
+using Avalonia.Media.Imaging;
+using ReactiveUI.Fody.Helpers;
+using Avalonia;
+using Avalonia.Platform;
+using Avalonia.Collections;
+using ImageLib.Model.Drawing;
+using ImageLib.Controls;
+using ImageLib.Model;
 
 namespace ImageLib.Image
 {
-    public static class MatrixImageBuilder
-    {
-        public static IMatrixImage CreateImage(Type elementType, int width, int height, int layersCount)
-        {
-            return (IMatrixImage)Activator.CreateInstance(typeof(MatrixImage<>).MakeGenericType(elementType), width, height, layersCount);
-        }
-
-        public static IMatrixImage CreateImage(Type elementType, int width, int height, int layersCount, object defaultValue)
-        {
-            return (IMatrixImage)Activator.CreateInstance(typeof(MatrixImage<>).MakeGenericType(elementType), width, height, layersCount, defaultValue);
-        }
-
-        public static IMatrixImage CreateImage(IMatrixLayer[] layers, bool copyLayers)
-        {
-            Type elementType = layers[0].ElementType;
-            var array = Array.CreateInstance(typeof(MatrixLayer<>).MakeGenericType(elementType), layers.Length);
-            for (int i = 0; i < layers.Length; i++)
-            {
-                array.SetValue(layers[i], i);
-            }
-            return (IMatrixImage)Activator.CreateInstance(typeof(MatrixImage<>).MakeGenericType(elementType), array, copyLayers);
-        }
-
-        /// <summary>
-        ///
-        /// </summary>
-        /// <param name="layers">
-        /// В зависимости от типа <see cref="Array"/>
-        /// <list type="bullet">
-        /// <item><term>Двумерный массив простых чисел T[,]</term> вернет однослойное изображение</item>
-        /// <item><term>Массив двумерных массивов простых чисел T[][,]</term> вернет многослойное изображение</item>
-        /// <item><term>Массив слоев IMatrixLayer[]</term> вернет изображение, состоящее из данных слоев без копирования</item>
-        /// </list>
-        /// </param>
-        /// <returns></returns>
-        public static IMatrixImage CreateImage(Array layers)
-        {
-            var elementType = layers.GetType().GetElementType();
-            if (elementType.IsValueType)
-            {
-                if (layers.Rank == 2)
-                {
-                    // layers is ?[,]
-                    IMatrixLayer layer = MatrixLayerBuilder.CreateLayer(layers);
-                    layers = Array.CreateInstance(typeof(MatrixLayer<>).MakeGenericType(layer.ElementType), 1);
-                    layers.SetValue(layer, 0);
-                    return (IMatrixImage)Activator.CreateInstance(typeof(MatrixImage<>).MakeGenericType(layer.ElementType), layers, false);
-                }
-            }
-            else if (elementType.IsArray)
-            {
-                elementType = elementType.GetElementType();
-                if (elementType.GetArrayRank() == 2 && (typeof(IMatrixLayer).IsAssignableFrom(elementType)))
-                {
-                    Array[] subarrays = (Array[])layers;
-                    layers = Array.CreateInstance(elementType.GetElementType(), subarrays.Length);
-                    for (int i = 0; i < subarrays.Length; i++)
-                    {
-                        layers.SetValue(MatrixLayerBuilder.CreateLayer(layers), i);
-                    }
-                    return (IMatrixImage)Activator.CreateInstance(typeof(MatrixImage<>).MakeGenericType(elementType), layers);
-                }
-            }
-            if (typeof(IMatrixLayer) == elementType)
-            {
-                return CreateImage((IMatrixLayer[])layers, false);
-            }
-            if (typeof(IMatrixLayer).IsAssignableFrom(elementType))
-            {
-                // layers is MatrixLayer<?>[]
-                return (IMatrixImage)Activator.CreateInstance(typeof(MatrixImage<>).MakeGenericType(elementType.GenericTypeArguments[0]), layers, false);
-            }
-            return (IMatrixImage)Activator.CreateInstance(typeof(MatrixImage<>).MakeGenericType(elementType), layers);
-        }
-    }
 
     /// <summary>
     /// Матричное изображение
@@ -98,6 +31,7 @@ namespace ImageLib.Image
     /// <typeparam name="TElement"></typeparam>
     [TypeConverter(typeof(ExpandableObjectConverter))]
     [Serializable]
+    [View(typeof(ImageRender))]
     public class MatrixImage<TElement> : ISerializable, IEnumerable<MatrixLayer<TElement>>, ICloneable, IMatrixImage where TElement : unmanaged/*, IComparable<TElement>*/
     {
         private readonly MatrixLayer<TElement>[] layers;
@@ -106,7 +40,8 @@ namespace ImageLib.Image
         public int Height { get; }
         public int LayerCount => layers.Length;
         public ImmutableArray<MatrixLayer<TElement>> Layers { get; }
-
+        public AvaloniaList<DrawModel> DrawModels { get; }
+            = new AvaloniaList<DrawModel>();
         public Dictionary<string, TagInfo> Tags { get; }
         = new Dictionary<string, TagInfo>();
 
@@ -173,6 +108,7 @@ namespace ImageLib.Image
         {
             if (!supressUpdate)
             {
+                UpdateBitmap();
                 Updated?.Invoke(this, update);
             }
         }
@@ -181,6 +117,7 @@ namespace ImageLib.Image
         {
             if (!supressUpdate)
             {
+                UpdateBitmap();
                 OnUpdate(new UpdateImage(update, this, update.Update, update.RectangleUpdate));
             }
         }
@@ -843,6 +780,72 @@ namespace ImageLib.Image
             this.rokeys = new HashSet<AutoDisposable>();
             this.disposedValue = false;
             this.supressUpdate = false;
+        }
+
+        [Reactive] public WriteableBitmap Bitmap { get; private set; }
+        
+        public WriteableBitmap CreateBitmap()
+        {
+            if (Bitmap == null)
+            {
+                Bitmap = new WriteableBitmap(
+                    new PixelSize(Width, Height),
+                    new Vector(96, 96),
+                    PixelFormat.Bgra8888);
+                UpdateBitmap();
+            }
+            return Bitmap;
+        }
+
+        private unsafe void UpdateBitmap()
+        {
+            if (Bitmap == null) return;
+            using (ILockedFramebuffer buf = Bitmap.Lock())
+            {
+                uint* ptr = (uint*)buf.Address;
+
+                var storages = ToByteImage(false).layers.Select(a => a.GetStorage(false)).ToArray();
+                int len = Width * Height;
+
+                if(layers.Length == 1)
+                {
+                    var storage = storages[0];
+                    for (int i = 0; i < len; i++)
+                        *(ptr + i) = GetColor(storage[i]);
+                }
+                else if (layers.Length == 3)
+                {
+                    var storageB = storages[0];
+                    var storageG = storages[1];
+                    var storageR = storages[2];
+                    for (int i = 0; i < len; i++)
+                        *(ptr + i) = GetColor(storageB[i], storageG[i], storageR[i]);
+                }
+                else if (layers.Length == 4)
+                {
+                    var storageB = storages[0];
+                    var storageG = storages[1];
+                    var storageR = storages[2];
+                    var storageA = storages[3];
+                    for (int i = 0; i < len; i++)
+                        *(ptr + i) = GetColor(storageB[i], storageG[i], storageR[i], storageA[i]);
+                }
+            }
+        }
+
+        public static uint GetColor(byte b, byte g, byte r, byte a)
+        {
+            return (uint)(b | g << 8 | r << 16 | a << 24);
+        }
+
+        public static uint GetColor(byte b, byte g, byte r)
+        {
+            return (uint)(b | g << 8 | r << 16 | 0xFF000000);
+        }
+
+        public static uint GetColor(byte gray)
+        {
+            return (uint)(gray | gray << 8 | gray << 16 | 0xFF000000);
         }
     }
 }

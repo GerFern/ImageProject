@@ -8,6 +8,10 @@ using System.Linq;
 using ImageLib;
 using ImageLib.Controller;
 using System.Threading;
+using System.Windows.Input;
+using Avalonia;
+using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
 
 namespace ImageLib.Loader
 {
@@ -56,18 +60,32 @@ namespace ImageLib.Loader
     //    }
     //}
 
-    public class MenuItem
+    public class MenuChecked : MenuModelOld
     {
+        private ICommand command;
+        [Reactive] public bool Checked { get; set; }
+        public override ICommand Command => command;
+
+        public MenuChecked() : base()
+        {
+            command = ReactiveCommand.Create(() => Checked = !Checked);
+        }
+    }
+
+    public class MenuModelOld : ReactiveObject
+    {
+        public virtual ICommand Command { get; }
+        [Reactive] public string DisplayName { get; private set; }
         public string Name { get; internal set; }
         public LocaleString? LocaleString { get; private set; }
-        private readonly Dictionary<string, MenuItem> childs = new Dictionary<string, MenuItem>();
-        private readonly Dictionary<string, MenuItem> actionableChilds = new Dictionary<string, MenuItem>();
-        public MenuItem Parent { get; private set; }
+        private readonly Dictionary<string, MenuModelOld> childs = new Dictionary<string, MenuModelOld>();
+        private readonly Dictionary<string, MenuModelOld> actionableChilds = new Dictionary<string, MenuModelOld>();
+        public MenuModelOld Parent { get; private set; }
 
         //public ItemContainer Container { get; }
         public object MenuElement { get; internal set; }
 
-        public IReadOnlyDictionary<string, MenuItem> Childs { get; }
+        public IReadOnlyDictionary<string, MenuModelOld> Childs { get; }
 
         public string GetLocaleName()
         {
@@ -78,15 +96,15 @@ namespace ImageLib.Loader
             else return Name;
         }
 
-        public MenuItem()
+        public MenuModelOld()
         {
-            Childs = new ReadOnlyDictionary<string, MenuItem>(childs);
+            Childs = new ReadOnlyDictionary<string, MenuModelOld>(childs);
             ItemRegisters = new SimpleReadOnlyCollection<ItemRegister>(itemRegisters);
         }
 
         public void AddRegister(ItemRegister itemRegister)
         {
-            MenuItem current = this;
+            MenuModelOld current = this;
             foreach (var item in itemRegister.Directory.Concat(new[] { itemRegister.Name }))
             {
                 LocaleString? ls = item is LocaleString
@@ -97,13 +115,13 @@ namespace ImageLib.Loader
                     ? ls.Value.Key
                     : (string)item;
 
-                if (current.childs.TryGetValue(key, out MenuItem methodItem))
+                if (current.childs.TryGetValue(key, out MenuModelOld methodItem))
                 {
                     current = methodItem;
                 }
                 else
                 {
-                    MenuItem newItem = new MenuItem
+                    MenuModelOld newItem = new MenuModelOld
                     {
                         Name = key,
                         Parent = current,
@@ -128,7 +146,7 @@ namespace ImageLib.Loader
         private readonly HashSet<ItemRegister> itemRegisters = new HashSet<ItemRegister>();
         public IReadOnlyCollection<ItemRegister> ItemRegisters { get; }
 
-        public event EventHandler<MenuItem> AddChild;
+        public event EventHandler<MenuModelOld> AddChild;
 
         public event EventHandler<ItemRegister> AddItemRegister;
 

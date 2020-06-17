@@ -18,6 +18,11 @@ namespace ImageLib.Dock
             _context = context;
         }
 
+        public override void SetActiveDockable(IDockable dockable)
+        {
+            base.SetActiveDockable(dockable);
+        }
+
         public override void PinDockable(IDockable dockable)
         {
             // Nothing

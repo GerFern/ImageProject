@@ -52,12 +52,19 @@ namespace ImageLib.Model
                         {
                             var bmp = SKBitmap.Decode(path);
                             var matrixImage = bmp.CreateMatrixImage();
+                            DocumentModel documentModel = null;
+                            EventWaitHandle wait = new EventWaitHandle(false, EventResetMode.ManualReset);
                             Dispatcher.UIThread.InvokeAsync(() =>
                             {
                                 Factory.AddDockable(Factory.FindOrCreateDocumentDock(),
-                                    new DocumentModel(new PanAndZoomModel()
+                                    documentModel = new DocumentModel(new PanAndZoomModel()
                                     { ModelData = matrixImage }));
+                                wait.Set();
                             });
+                            wait.WaitOne();
+                            wait.Dispose();
+                            if (documentModel != null)
+                                MainDocument.OnDocumentCreate(documentModel);
                             //bmp.ColorType == SKColorType.
                             //var bmp = new Bitmap(path);
                             //bmp.PlatformImpl.Item.

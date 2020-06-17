@@ -20,7 +20,7 @@ namespace ImageLib.Model.Drawing
     {
         public AvaloniaList<DrawModel> Draws { get; } = new AvaloniaList<DrawModel>();
 
-        public virtual void StartDraw(DrawingContext drawingContext) 
+        public virtual void StartDraw(DrawingContext drawingContext)
             => DrawChilds(drawingContext);
 
         protected void DrawChilds(DrawingContext drawingContext)
@@ -36,8 +36,11 @@ namespace ImageLib.Model.Drawing
         [Reactive] public double Opacity { get; set; }
         [Reactive] public Rect SourceRect { get; set; }
         [Reactive] public Rect DestRect { get; set; }
-        [Reactive] public BitmapInterpolationMode BitmapInterpolationMode { get; set; }
+
+        [Reactive]
+        public BitmapInterpolationMode BitmapInterpolationMode { get; set; }
             = BitmapInterpolationMode.Default;
+
         [Reactive] public bool DrawMatrixImageModels { get; set; }
 
         public override void StartDraw(DrawingContext drawingContext)
@@ -55,14 +58,21 @@ namespace ImageLib.Model.Drawing
 
     public class LineModel : DrawModel
     {
-        [Reactive] Pen Pen { get; set; }
-        [Reactive] Avalonia.Point Point1 { get; set; }
-        [Reactive] Avalonia.Point Point2 { get; set; }
+        [Reactive] private Pen Pen { get; set; }
+        [Reactive] private Avalonia.Point Point1 { get; set; }
+        [Reactive] private Avalonia.Point Point2 { get; set; }
 
         public override void StartDraw(DrawingContext drawingContext)
         {
             drawingContext.DrawLine(Pen, Point1, Point2);
             base.StartDraw(drawingContext);
+        }
+
+        public LineModel(Pen pen, Avalonia.Point start, Avalonia.Point end)
+        {
+            Pen = pen;
+            Point1 = start;
+            Point2 = end;
         }
     }
 
@@ -71,10 +81,21 @@ namespace ImageLib.Model.Drawing
         [Reactive] public Pen Pen { get; set; }
         [Reactive] public Rect Rect { get; set; }
         [Reactive] public int CornerRadius { get; set; }
+
         public override void StartDraw(DrawingContext drawingContext)
         {
             drawingContext.DrawRectangle(Pen, Rect, CornerRadius);
             base.StartDraw(drawingContext);
+        }
+
+        public RectangleModel()
+        {
+        }
+
+        public RectangleModel(Pen pen, Rect rect, int cornerRadius = 0)
+        {
+            this.Pen = pen;
+            this.Rect = rect;
         }
     }
 
@@ -94,6 +115,7 @@ namespace ImageLib.Model.Drawing
     public class PushGeometryClipModel : DrawModel
     {
         [Reactive] public Geometry Geometry { get; set; }
+
         public override void StartDraw(DrawingContext drawingContext)
         {
             using (drawingContext.PushGeometryClip(Geometry))
@@ -106,6 +128,7 @@ namespace ImageLib.Model.Drawing
     public class PushOpacityModel : DrawModel
     {
         [Reactive] public double Opacity { get; set; }
+
         public override void StartDraw(DrawingContext drawingContext)
         {
             using (drawingContext.PushOpacity(Opacity))
@@ -119,6 +142,7 @@ namespace ImageLib.Model.Drawing
     {
         [Reactive] public Brush Brush { get; set; }
         [Reactive] public Rect Rect { get; set; }
+
         public override void StartDraw(DrawingContext drawingContext)
         {
             using (drawingContext.PushOpacityMask(Brush, Rect))
@@ -131,6 +155,7 @@ namespace ImageLib.Model.Drawing
     public class PushPreTransformModel : DrawModel
     {
         [Reactive] public Matrix Matrix { get; set; }
+
         public override void StartDraw(DrawingContext drawingContext)
         {
             using (drawingContext.PushPreTransform(Matrix))
@@ -143,6 +168,7 @@ namespace ImageLib.Model.Drawing
     public class PushPostTransformModel : DrawModel
     {
         [Reactive] public Matrix Matrix { get; set; }
+
         public override void StartDraw(DrawingContext drawingContext)
         {
             using (drawingContext.PushPostTransform(Matrix))
@@ -176,7 +202,6 @@ namespace ImageLib.Model.Drawing
         }
     }
 
-
     public class PushTransformContainerModel : DrawModel
     {
         public override void StartDraw(DrawingContext drawingContext)
@@ -190,19 +215,26 @@ namespace ImageLib.Model.Drawing
 
     public class GeometryModel : DrawModel
     {
-        [Reactive] Pen Pen { get; set; }
-        [Reactive] Brush Brush { get; set; }
+        [Reactive] private Pen Pen { get; set; }
+        [Reactive] private Brush Brush { get; set; }
 
-        [Reactive] Geometry Geometry { get; set; }
+        [Reactive] private Geometry Geometry { get; set; }
+
         public override void StartDraw(DrawingContext drawingContext)
         {
             drawingContext.DrawGeometry(Brush, Pen, Geometry);
             base.StartDraw(drawingContext);
         }
+
+        public GeometryModel()
+        {
+        }
+
+        public GeometryModel(Geometry geometry, Pen pen, Brush brush)
+        {
+            Geometry = geometry;
+            Pen = pen;
+            Brush = brush;
+        }
     }
-
-
-
- 
-
 }

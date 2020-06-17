@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using Dock.Model;
 using ImageLib.Controls;
+using ImageLib.Image;
 using ImageLib.Loader;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -56,6 +57,12 @@ namespace ImageLib.Model
                         (Application.Current.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime).MainWindow);
 
                     //editor.ShowDialog()
+                }
+                var ret = (IMatrixImage)method.Invoke(MainDocument.Image);
+                if (!ReferenceEquals(ret, MainDocument.Image))
+                {
+                    MainDocument.ModelDataContainer.ModelData = ret;
+                    MainDocument.Image = ret;
                 }
                 //method.Invoke(MainWindowViewModel.Instance.Factory.MainLayout.)
             });

@@ -209,6 +209,7 @@ namespace Shared.WinFormsPlatform
                         cts.Dispose();
                     }
                     cts = new CancellationTokenSource();
+                    StepSync.Instance.Step();
                     work?.Join();
                     work = new Thread(arg =>
                     {

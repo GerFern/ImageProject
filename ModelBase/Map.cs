@@ -11,6 +11,7 @@ using Utils.Converters;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ModelBase
 {
@@ -93,6 +94,7 @@ namespace ModelBase
 
         protected virtual void OnSteped()
         {
+            Steped?.Invoke();
         }
 
         public event Action<StackTrace> Entry;
@@ -104,7 +106,12 @@ namespace ModelBase
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public class Map : MarshalByRefObject
     {
-        public static Map Instance { get; set; }
+        static Map instance;
+        public static Map Instance 
+        {
+            get => instance ?? (instance = new Map());
+            set => instance = value; 
+        }
 
         #region PublicMembers
 
@@ -172,6 +179,21 @@ namespace ModelBase
 
         public (Line, Line)[] Intersects = new (Line, Line)[0];
 
+        [Browsable(false)]
+        public bool ConnectLong { get; set; }
+
+        [Browsable(false)]
+        public bool CasheDotDistances { get; set; } = true;
+
+        [Browsable(false)]
+        public Func<Dot[], (float dist, Dot d1, Dot d2)[], IEnumerable<LineSet>> CustomBuildLines { get; set; }
+
+        [Browsable(false)]
+        public Func<(float dist, Dot d1, Dot d2), CancellationToken, StepBase, bool> ConnectCustom { get; set; }
+
+        [Browsable(false)]
+        public Action<(float dist, Dot d1, Dot d2)[], CancellationToken, StepBase> ConnectInArrayCustom { get; set; }
+
         #endregion Properties
 
         #region Methods
@@ -188,19 +210,12 @@ namespace ModelBase
             }
         }
 
-        public bool CasheDotDistances { get; set; } = true;
-
-        public Func<Dot[], (float dist, Dot d1, Dot d2)[], IEnumerable<LineSet>> CustomBuildLines { get; set; }
-
-        public Func<(float dist, Dot d1, Dot d2), CancellationToken, StepBase, bool> ConnectCustom { get; set; }
-
-        public Action<(float dist, Dot d1, Dot d2)[], CancellationToken, StepBase> ConnectInArrayCustom { get; set; }
-
         public Func<(float dist, Dot d1, Dot d2), CancellationToken, StepBase, bool> GetConnect()
         {
             return ConnectCustom ?? ((item, ct, step) =>
                {
                    if (item.d1.secondConnect != null && item.d2.secondConnect != null) return false;
+                   step.Wait();
                    if (item.d1.firstConnect == null) item.d1.firstConnect = item.d2;
                    else item.d1.secondConnect = item.d2;
                    if (item.d2.firstConnect == null) item.d2.firstConnect = item.d1;
@@ -212,17 +227,262 @@ namespace ModelBase
         public Action<(float dist, Dot d1, Dot d2)[], CancellationToken, StepBase> GetConnectInArray()
         {
             return ConnectInArrayCustom ?? ((sortedDist, ct, step) =>
-               {
-                   var connect = GetConnect();
-                   foreach ((float dist, Dot d1, Dot d2) item in sortedDist)
-                   {
-                       if (ct.IsCancellationRequested) break;
-                       if (item.d1.secondConnect == null && item.d2.secondConnect == null)
-                       {
-                           connect(item, ct, step);
-                       }
-                   }
-               });
+                {
+                    Func<(float dist, Dot d1, Dot d2), CancellationToken, StepBase, bool> connect = GetConnect();
+                    foreach ((float dist, Dot d1, Dot d2) item in sortedDist)
+                    {
+                        if (ct.IsCancellationRequested) break;
+                        if (item.d1.secondConnect == null && item.d2.secondConnect == null)
+                        {
+                            if (item.d1.startConnect == null && item.d2.startConnect == null)
+                            {
+                                connect(item, ct, step);
+                            }
+                            else
+                            {
+                                if (item.d1.startConnect == item.d2
+                                && item.d2.startConnect == item.d1)
+                                    connect(item, ct, step);
+                            }
+                        }
+                    }
+                });
+        }
+
+        public void SetCustomBuild2()
+        {
+            IEnumerable<(Dot dot, float coeff)> getCoeffs(Dot first, Dot current, Dot second, int count)
+            {
+                Point firstP = first.Point, currentP = current.Point, secondP = second.Point;
+                LineVector vectorToPrev = LineVector.FindVector(secondP, currentP);
+                LineVector vectorToFirst = LineVector.FindVector(secondP, firstP);
+                IEnumerable<KeyValuePair<Dot, float>> fet = second.OtherDotDistances;
+                if (count > -1)
+                {
+                    fet = fet.Where(a => a.Key.firstConnect is null) // Где нет соединения
+                                .Where(a =>
+                                    a.Value * 2.25 > vectorToPrev.Length    // Разница в растоянии не более,
+                                    && a.Value < vectorToPrev.Length * 2.25);
+                }
+                else
+                {
+                    fet = fet.Where(a => a.Key.firstConnect is null)  // Где нет соединения
+                    .Where(a =>
+                        a.Value * 2 - count * 0.05f > vectorToPrev.Length    // Разница в растоянии не более,
+                        && a.Value < vectorToPrev.Length * 2 - count * 0.05f);  // чем в 2 раза
+                }
+                IEnumerable<(Dot Key, float coeff)> fet2 = fet
+                    //.OrderBy(a => a.Value)
+                    //.Take(20)
+                    .Select(a => (a.Key, Coeff(vectorToPrev, LineVector.FindVector(secondP, a.Key.Point))));
+                if (first != current
+                    && vectorToPrev.Length * 2 > vectorToFirst.Length
+                    && vectorToPrev.Length < vectorToFirst.Length * 2) // Если возможно соединиться с начальной точкой
+                {
+                    var firstVectorToNext = LineVector.FindVector(first.Point, first.NextConnectDot.Point);
+                    if (firstVectorToNext.Length * 2 > vectorToFirst.Length
+                        && firstVectorToNext.Length < vectorToFirst.Length * 2)
+                    {
+                        //if (first == current)
+                        //    fet2 = fet2.Where(a => a.Item2 <= 5).OrderBy(a => a.Item2).Concat(new[] { (first, 100f) });
+                        //else
+                        fet2 = fet2.Concat(new[] { (first, Coeff(vectorToPrev, vectorToFirst) * /*delta **/ 1f/*.1f*/) })
+                            .Where(a => a.Item2 <= 5)
+                            .OrderBy(a => a.Item2);
+                    }
+                    else fet2 = fet2.Where(a => a.Item2 < 5).OrderBy(a => a.Item2);
+                }
+                else fet2 = fet2.Where(a => a.Item2 < 5).OrderBy(a => a.Item2);
+                return fet2;
+                //return.Where(a => a.Item2 <= 4.5);
+            }
+
+            bool recoursive(List<Dot> dots, Dot first, Dot prev, Dot current, int count, CancellationToken ct = default, StepBase step = null)
+            {
+                Dot tmp = dots.First();
+                if (dots.Count > 3)
+                    foreach (var item in dots.Skip(1).SkipLast(1))
+                    {
+                        if (PointExtensions.AreCrossing(tmp.Point, item.Point, prev.Point, current.Point))
+                        {
+                            return false;
+                        }
+                        tmp = item;
+                    }
+                dots.Add(current);
+                if (current.startConnect != null && (current.startConnect.firstConnect == null) || current == first)
+                {
+                    var dot = current.startConnect;
+                    if (Coeff(
+                        new LineVector
+                        (
+                            current.Point.X - prev.Point.X,
+                            current.Point.Y - prev.Point.Y
+                        ),
+                        new LineVector
+                        (
+                            current.Point.X - dot.Point.X,
+                            current.Point.Y - dot.Point.Y
+                        )) > 50)
+                    {
+                        dots.Remove(current);
+                        return false;
+                    }
+                    current.secondConnect = dot;
+                    dot.firstConnect = current;
+                    current.startConnect = null;
+                    dot.startConnect = null;
+                    step.Wait(); // Отладка.
+                    if (dot == first)
+                    {
+                        return true;
+                    }
+
+                    if (recoursive(dots, first, current, dot, count + 1, ct, step))
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        current.secondConnect = null;
+                        dot.firstConnect = null;
+                        current.startConnect = dot;
+                        dot.startConnect = current;
+                        dots.Remove(current);
+
+                        return false;
+                    }
+                }
+                var fet = getCoeffs(first, prev, current, count);
+                foreach (var (dot, coeff) in fet.Take(5))
+                {
+                    if (ct.IsCancellationRequested)
+                    { // Задача отменена, замыкаем принудительно структуру для избежания ошибок
+                        current.secondConnect = first;
+                        first.firstConnect = current;
+                        return true;
+                    }
+                    current.secondConnect = dot;
+                    dot.firstConnect = current;
+                    step.Wait(); // Отладка.
+
+                    if (dot == first)
+                    {
+                        return true; // Если структура замкнулась, завершаем рекурсию
+                    }
+                    if (recoursive(dots, first, current, dot, count + 1, ct, step)) return true; // Если вложенный цикл вернул true, то структура уже замкнулась
+                    dot.firstConnect = null;  // Если не нашлось соединений в внутреннем цикле, то отменяется последнее соединение
+                    current.secondConnect = null;
+                }
+                dots.Remove(current);
+                return false; // Не нашлось соединений
+            }
+
+            CasheDotDistances = true;
+            ConnectCustom = (a, ct, step) =>
+            {
+                if (a.dist > 200) return false;
+                Dot d1 = a.d1;
+                Dot d2 = a.d2;
+                Dot first = d1;
+                Dot current = d1;
+                Dot second = d2;
+                //Point firstP = first.Point;
+                //Point currentP = current.Point;
+                //Point secondP = second.Point;
+                int counter = 0;
+                if (d1.firstConnect is null && d2.firstConnect is null)
+                {
+                    int len = second.OtherDotDistances
+                        .Count(a => a.Key.firstConnect == null);
+                    // Первоначальное соединение
+                    current.firstConnect = current; // Временная заглушка, чтобы не показывалось в запросе
+                    current.secondConnect = second;
+                    second.firstConnect = current;
+                    if (step == null) step = new StepBase();
+                    step.Wait();
+                    List<Dot> dots = new List<Dot>();
+                    dots.Add(first);
+                    if (recoursive(dots, first, current, second, 0, ct, step))
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        first = second;
+                        second = current;
+                        current = first;
+                        current.firstConnect = current; // Временная заглушка, чтобы не показывалось в запросе
+                        current.secondConnect = second;
+                        second.firstConnect = current;
+                        second.secondConnect = null;
+                        //d2.firstConnect = d2;
+                        //d2.secondConnect = d1;
+                        //d1.firstConnect = d2;
+                        //d1.secondConnect = null;
+                        if (recoursive(dots, first, current, second, 0, ct, step))
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            d1.firstConnect = null;
+                            d1.secondConnect = null;
+                            d2.firstConnect = null;
+                            d2.secondConnect = null;
+                            return false;
+                        }
+                    }
+                    //while (!ct.IsCancellationRequested)
+                    //{
+                    //    step.Wait();
+
+                    //    //LineVector vectorToPrev = LineVector.FindVector(secondP, currentP);
+                    //    //LineVector vectorToFirst = LineVector.FindVector(secondP, firstP);
+                    //    //IEnumerable<(Dot dot, float coeff)> fet = second.OtherDotDistances
+                    //    //    .Where(a => a.Key.firstConnect is null      // Где нет соединения
+                    //    //        && a.Value * 5 > vectorToPrev.Length    // Разница в растоянии не более,
+                    //    //        && a.Value < vectorToFirst.Length * 5)  // чем в 5 раз
+                    //    //    .OrderBy(a => a.Value)
+                    //    //    .Take(20)
+                    //    //    .Select(a => (a.Key, Coeff(vectorToPrev, LineVector.FindVector(secondP, a.Key.Point))))
+                    //    //    .Concat(new[] { (first, Coeff(vectorToPrev, vectorToFirst) * /*delta **/ (1.1f - counter * 0.1f)) });
+
+                    //    //IEnumerable<(Dot dot, float coeff)> fet = getCoeffs(first, current, second);
+
+                    //    //Dot dotMin = first;
+                    //    //float min = vectorToPrev.Length * 2;
+                    //    //foreach (var (dot, coeff) in fet)
+                    //    //{
+                    //    //    second.secondConnect = dot;
+                    //    //    dot.firstConnect = second;
+
+                    //    //    //if (coeff < min)
+                    //    //    //{
+                    //    //    //    dotMin = dot;
+                    //    //    //    min = coeff;
+                    //    //    //}
+                    //    //}
+
+                    //    //second.secondConnect = dotMin;
+                    //    //dotMin.firstConnect = second;
+
+                    //    //if (dotMin == first)
+                    //    //{
+                    //    //    step.Wait();
+                    //    //    break;
+                    //    //}
+
+                    //    //current = second;
+                    //    //second = dotMin;
+                    //    ////currentP = secondP;
+                    //    ////secondP = second.Point;
+                    //    //counter++;
+                    //}
+                    return true;
+                }
+                else return false;
+            };
         }
 
         public void SetCustomBuild1()
@@ -474,7 +734,8 @@ namespace ModelBase
             // * (Угол между векторами + 1)
             float angle = (float)Math.PI - toPrev.FindAngle(toNext);
 
-            return (distMod * 0.75f) * (angle + 3);
+            return ((distMod * 0.75f)) * (float)(Math.Pow(2, angle));
+            //return (distMod * 0.75f) * (float)(angle + 3);
             //((float)Math.Exp((float)Math.PI - LineVector.FindVector(first.Point, a.Key.Point)
             //    .FindAngle(toPrev)) + (delta - 2));
         }
@@ -506,16 +767,16 @@ namespace ModelBase
                     {
                         var dot = dots.First();
                         var id = dot.ID;
-                        var odDistances = dot.otherDotDistances;
+                        Dictionary<Dot, float> otherDotDistances = dot.otherDotDistances;
                         dots.Remove(dot);
                         foreach (var item in dots)
                         {
                             float distance = (float)dot.Point.Distance(item.Point);
                             item.otherDotDistances.Add(dot, distance);
-                            odDistances.Add(item, distance);
+                            otherDotDistances.Add(item, distance);
                             dist.Add((distance, dot, item));
                         }
-                        dot.order = odDistances.OrderBy(a => a.Value).Select(a => a.Key.ID).ToArray();
+                        dot.order = otherDotDistances.OrderBy(a => a.Value).Select(a => a.Key.ID).ToArray();
                     }
                 }
                 // Отсортированный массив расстояний между точками
@@ -568,7 +829,6 @@ namespace ModelBase
 
                 GetConnectInArray()(sortedDist, cancellationToken, step);
                 var checkedLineSet = new HashSet<Dot>(new Dot.DotIDEqualityComparer());
-                //List<LineSet> lineSets = new List<LineSet>();
                 int idCounter = 1;
                 foreach (var item in points.Values)
                 {
@@ -586,20 +846,21 @@ namespace ModelBase
                     }
                     while (firstDot != currentDot)
                     {
-                        try
+                        //try
+                        //{
+                        if (dotConnections.Count > 1000) break;// Debugger.Break();
+                        if (prevDot == currentDot.secondConnect)
                         {
-                            if (dotConnections.Count > 1000) Debugger.Break();
-                            if (prevDot == currentDot.secondConnect)
-                            {
-                                Swap(ref currentDot.firstConnect, ref currentDot.secondConnect); // swap для сохранения порядка
-                            }
-                            dotConnections.Add(currentDot);
-                            prevDot = currentDot;
-                            currentDot = currentDot.secondConnect;
+                            Swap(ref currentDot.firstConnect, ref currentDot.secondConnect); // swap для сохранения порядка
                         }
-                        catch { break; }
+                        dotConnections.Add(currentDot);
+                        prevDot = currentDot;
+                        currentDot = currentDot.secondConnect;
+                        //}
+                        //catch { break; }
                     }
-                    lineSets.Add(idCounter, new LineSet(idCounter++, lineContainer, dotConnections.ToArray()));
+                    if (dotConnections.Count > 1)
+                        lineSets.Add(idCounter, new LineSet(idCounter++, lineContainer, dotConnections.ToArray()));
                 }
             }
         }
@@ -612,9 +873,8 @@ namespace ModelBase
                 List<(Line, Line)> intersected = new List<(Line, Line)>(); // Буфер пересечений линий
                 List<LineSet> otherLineSets = new List<LineSet>();
                 if (lineSets == null) lineSets = this.lineSets.Values;
-                //System.IO.Stream s = System.IO.File.Create("D://tmp3.bin");
                 // lineSets - Множество многоугольников (a) [Все найденные многоугольники]
-                // this.lineSets - Множество многоугольников (b) [Изначально пустое множество]
+                // otherLineSets - Множество многоугольников (b) [Изначально пустое множество]
                 foreach (var thisLineSet in lineSets) // Многоугольник (a)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
@@ -709,6 +969,7 @@ namespace ModelBase
 
         public void Clear()
         {
+            idCounter = 0;
             this.points.Clear();
             this.lineContainer.Clear();
             this.lineSets.Clear();

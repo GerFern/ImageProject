@@ -108,8 +108,8 @@ namespace Shared.WinFormsPlatform
             {
                 if (!methodItem.Type.CustomAttributes.OfType<SerializableAttribute>().Any())
                 {
-                    MessageBox.Show($"Ошибка в инициализации метода {methodItem.Directory.Last()}. " +
-                        $"Класс {methodItem.Type.FullName} не помечен как сериализуемый");
+                    //MessageBox.Show($"Ошибка в инициализации метода {methodItem.Directory.Last()}. " +
+                    //    $"Класс {methodItem.Type.FullName} не помечен как сериализуемый");
                 }
             }
         }

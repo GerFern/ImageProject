@@ -41,6 +41,11 @@ namespace ModelBase
             RectangleF = first.Point.GetRectangleFromTwoPoint(second.Point);
             first.PointChanged += DotPointChanged;
             second.PointChanged += DotPointChanged;
+            float firstY = first.Point.Y;
+            float secondY = second.Point.Y;
+            Direction = firstY < secondY ? Direction.Up
+                        : firstY > secondY ? Direction.Down
+                        : Direction.None;
         }
 
         ~Line()
@@ -74,6 +79,9 @@ namespace ModelBase
         [Browsable(false)]
         public RectangleF RectangleF { get; private set; }
 
+        [DisplayName("Направление")]
+        public Direction Direction { get; }
+
         public override string ToString() =>
             $"{First.Point} -> {Second.Point} : {First.Point.Distance(Second.Point)}";
     }
@@ -89,6 +97,10 @@ namespace ModelBase
             X = x;
             Y = y;
             Length = (float)Math.Sqrt(x * x + y * y);
+        }
+
+        public LineVector(PointF point) : this(point.X, point.Y)
+        {
         }
 
         private LineVector(float x, float y, float length)

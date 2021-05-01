@@ -5,6 +5,7 @@ using ImageLib.Image;
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 
@@ -13,6 +14,28 @@ namespace OpenCVSupport
     public static class ImageExtensions
     {
         public const string tagCVMat = "CV_Mat";
+
+        public static Mat GetCVMat(this IMatrixImage image, ColorConversionCodes? conversion = null, bool sync = true)
+        {
+            if (conversion != null)
+            {
+                var method = Info.OfMethod("OpenCVSupport", "OpenCVSupport.ImageExtensions", "GetCVMat", "MatrixImage`1, ColorConversionCodes");
+                method = method.MakeGenericMethod(image.ElementType);
+                //var method =
+                //    typeof(ImageExtensions).GetMethod(nameof(GetCVMat), 1, new Type[] { typeof(MatrixImage<>) })
+                //    .MakeGenericMethod(image.ElementType);
+                return (Mat)method.Invoke(null, new object[] { image, conversion });
+            }
+            else
+            {
+                var method = Info.OfMethod("OpenCVSupport", "OpenCVSupport.ImageExtensions", "GetCVMat", "MatrixImage`1");
+                method = method.MakeGenericMethod(image.ElementType);
+                //var method =
+                //    typeof(ImageExtensions).GetMethod(nameof(GetCVMat), 1, new Type[] { typeof(MatrixImage<>) })
+                //    .MakeGenericMethod(image.ElementType);
+                return (Mat)method.Invoke(null, new object[] { image });
+            }
+        }
 
         public static Mat GetCVMat(this IMatrixImage image, bool sync = true)
         {
@@ -31,6 +54,15 @@ namespace OpenCVSupport
             Mat<TElement> mat = new Mat<TElement>(image.Height, image.Width);
             Cv2.Merge(mats, mat);
             return mat;
+        }
+
+        public static Mat GetCVMat<TElement>(this MatrixImage<TElement> image, ColorConversionCodes conversion)
+            where TElement : unmanaged, IComparable<TElement>
+        {
+            Mat<TElement>[] mats = image.Split(false).Select(a => GetCVMat(a)).ToArray();
+            Mat<TElement> mat = new Mat<TElement>(image.Height, image.Width);
+            Cv2.Merge(mats, mat);
+            return mat.CvtColor(conversion);
         }
 
         public static Mat GetCVMat(this IMatrixLayer layer)

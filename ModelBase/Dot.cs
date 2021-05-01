@@ -40,6 +40,9 @@ namespace ModelBase
         public Dot firstConnect;
         public Dot secondConnect;
 
+        public Dot? startConnect;
+
+
         [ReadOnly(true)]
         public List<Line> Lines { get; set; } = new List<Line>();
 

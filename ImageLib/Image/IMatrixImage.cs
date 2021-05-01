@@ -99,7 +99,7 @@ namespace ImageLib.Image
             RectangleUpdate = rectangleUpdate;
         }
 
-        public UpdateLayer SingleLayerUpdate { get; }
+        public UpdateLayer? SingleLayerUpdate { get; }
         public IMatrixImage Image { get; }
         public Update Update { get; }
         private (int x, int y, int width, int height)? RectangleUpdate { get; }

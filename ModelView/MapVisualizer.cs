@@ -395,12 +395,20 @@ namespace ModelView
                 if (Map.LineSets.Count == 0) // Режим отладки
                 {
                     using Pen pen = new Pen(Color.DarkRed, 3);
+                    using Pen pen2 = new Pen(Color.DarkGreen, 4);
                     foreach (var item in Map.Dots.Values)
                     {
                         if (item.NextConnectDot != null)
                             g.DrawLine(pen,
-                                  TranslatePointFReverse(item.Point),
-                                  TranslatePointFReverse(item.NextConnectDot.Point));
+                                TranslatePointFReverse(item.Point),
+                                TranslatePointFReverse(item.NextConnectDot.Point));
+
+                        if (item.startConnect != null)
+                        {
+                            g.DrawLine(pen2,
+                                TranslatePointFReverse(item.Point),
+                                TranslatePointFReverse(item.startConnect.Point));
+                        }
                     }
                 }
 
@@ -486,6 +494,11 @@ namespace ModelView
                     }
                 }
 
+                if (SelectedDot != null)
+                {
+                    ControlPaint.DrawRadioButton(g, TranslatePointFReverse(SelectedDot.Point).GetRadiusRectangle(rad + 6).ToRectangle(),
+                        ButtonState.Inactive | ButtonState.Pushed);
+                }
                 //if(DebugDot != null)
                 //{
                 //    ControlPaint.DrawRadioButton(g, TranslatePointFReverse(DebugDot.PrevConnectDot.Point).GetRadiusRectangle(rad + 5).ToRectangle(),

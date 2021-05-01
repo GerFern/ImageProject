@@ -10,7 +10,7 @@ using Utils.Converters;
 namespace ModelBase
 {
     /// <summary>
-    /// Набор линий. Отдельный объект
+    /// Набор линий. Отдельная структура
     /// </summary>
     [Serializable]
     [TypeConverter(typeof(ExpandableObjectConverter))]
@@ -40,6 +40,11 @@ namespace ModelBase
         public float[] dotDistances;
         public RelationLineSets IntersectLineSets;
         public RectangleF RectangleF;
+
+        [DisplayName("Напрваление отрезка")]
+        public Direction Direction { get; }
+
+        public Dot[] Dots => dots;
 
         [Browsable(false)]
         public bool Selected { get; set; } = false;
@@ -71,7 +76,29 @@ namespace ModelBase
         /// <returns></returns>
         public bool CheckContains(PointF pointF)
         {
-            return CheckContains(dots.Select(a => a.Point).ToArray(), pointF);
+            int count = 0;
+            PointF first = lines[0].First.Point;
+            float x = pointF.X, y = pointF.Y;
+            float curX, curY, prevX, prevY;
+            prevX = first.X;
+            prevY = first.Y;
+            foreach (var item in lines)
+            {
+                PointF second = item.Second.Point;
+                curX = second.X;
+                curY = second.Y;
+
+                if ((((curY < y && y < prevY) || (prevY < y && y < curY)) // Сравнение по высоте
+                       && (y - curY) / (prevY - curY) * (prevX - curX) < x - curX) // Точка находится правее отрезка
+                       || (item.Direction != Direction.None && curY == y && curX < x))
+                    // Или высота второй точки совпадает и точка находится справа
+                    count++; // Увеличиваем счетчик на 1
+
+                prevX = curX;
+                prevY = curY;
+            }
+
+            return count % 2 == 1;
         }
 
         /// <summary>
@@ -156,6 +183,7 @@ namespace ModelBase
         {
             ID = id;
             this.dots = dots.ToArray();
+            //if(dots.Last().NextConnectDot)
             foreach (var item in this.dots)
             {
                 item.LineSet = this;
@@ -254,5 +282,18 @@ namespace ModelBase
         Color.Tomato,
         Color.Maroon
         };
+    }
+
+    [TypeConverter(typeof(DescriptionEnumConverter))]
+    public enum Direction
+    {
+        [Description("Нет")]
+        None,
+
+        [Description("Вверх")]
+        Up,
+
+        [Description("Вниз")]
+        Down
     }
 }
